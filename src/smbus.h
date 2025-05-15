@@ -55,6 +55,24 @@ void quit(int fd, int status)
 // ====================
 
 
+void smbus_print_block(const unsigned char data[32])
+{
+	printf("[");
+	for (int i = 0; i < 31; i++)
+		printf("%.2x ", data[i]);
+	printf("%.2x]\n", data[31]);
+}
+
+
+// Convert SMBus data in hex (little endian) to unsigned char*
+void smbus_block_LE_to_u8s(const unsigned char* data, int length, unsigned char* dest)
+{
+	for (int i = length - 1; i >= 0; i--)
+	{
+		dest[i] = data[i];
+	}
+}
+
 // Convert SMBus data in hex (little endian) to unsinged 32-bit integer
 uint32_t smbus_block_LE_to_ui32(const unsigned char* data, int length)
 {
