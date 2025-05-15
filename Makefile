@@ -13,35 +13,37 @@ UNAME = $(shell uname -r)
 LINUX_HEADERS = /lib/modules/${UNAME}/build/include/
 
 ARCH_PATH = /lib/modules/${UNAME}/build/arch
-
 ARCH = $(shell bash -c "ls -1 /lib/modules/$(shell uname -r)/build/arch | grep -v Kconfig")
 ARCH_HEADERS = ${ARCH_PATH}/${ARCH}/include/
 
-SRC_FILES = $(wildcard *.c)
 
-TARGETS = $(SRC_FILES:.c=)
-OBJ = $(SRC_FILES:.c=.o)
+#SRC_FILES = src/sbsutil.c
+TARGETS = sbsutil
+#OBJ = $(SRC_FILES:.c=.o)
 #INCLUDE = -I. -I${LINUX_HEADERS} -I${LINUX_HEADERS}/uapi/ -I ${ARCH_HEADERS} -I${ARCH_HEADERS}/uapi/ -I${ARCH_HEADERS}/generated/uapi/ -I${ARCH_HEADERS}/generated/
 INCLUDE = -I.
 LINK = -li2c
+
+prerun:
+	$(shell mkdir -p build)
 
 .PHONY: all
 all: release
 
 .PHONY: debug
 debug: CFLAGS += ${CFLAGS_DEBUG}
-debug: $(TARGETS)
+debug: prerun $(TARGETS)
 
 .PHONY: release
 release: CFLAGS += ${CFLAGS_RELEASE}
-release: $(TARGETS)
+release: prerun $(TARGETS)
 
 $(TARGETS): %: %.o
-	${C} ${CFLAGS} ${LINK} -o $@ $^
+	${C} ${CFLAGS} ${LINK} -o build/$@ build/$^
 
-%.o : %.c
-	${C} -c ${CFLAGS} $< ${INCLUDE} -o $@
+%.o : src/%.c
+	${C} -c ${CFLAGS} $< ${INCLUDE} -o build/$(notdir $@)
 
 .PHONY: clean
 clean:
-	rm $(OBJ) $(TARGETS)
+	rm build/*
