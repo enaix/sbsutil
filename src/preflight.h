@@ -22,7 +22,7 @@ void sbs_preflight_check_chemid(int fd, enum ControllerDevice device)
 		quit(fd, 1);
 	}
 
-	printf("   ChemID : %.4x\n", chem.id);
+	printf("    ChemID : %.4x\n", chem.id);
 }
 
 void sbs_preflight_check_devicetype(int fd, enum ControllerDevice device)
@@ -42,7 +42,7 @@ void sbs_preflight_check_devicetype(int fd, enum ControllerDevice device)
 		quit(fd, 1);
 	}
 
-	printf("   DeviceType : %.4x\n", dev.type);
+	printf("    DeviceType : %.4x\n", dev.type);
 }
 
 void sbs_preflight_check_firmware_v(int fd, enum ControllerDevice device)
@@ -62,7 +62,7 @@ void sbs_preflight_check_firmware_v(int fd, enum ControllerDevice device)
 		quit(fd, 1);
 	}
 
-	printf("   FirmwareVersion : %s\n", fw.fw);
+	printf("    FirmwareVersion : %s\n", fw.fw);
 }
 
 void sbs_preflight(int fd, enum ControllerDevice device)

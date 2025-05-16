@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
 
@@ -50,6 +51,46 @@ void quit(int fd, int status)
 	close(fd);
 	exit(status);
 }
+
+// SBS I/O functions
+// =================
+
+
+int sbs_exec_block_command(__u8 command, const __u8* data, __u8* result, int length, int fd)
+{
+	__s32 res = i2c_smbus_write_block_data(fd, command, length, data);
+	if (res < 0)
+	{
+		printf("sbs_exec_block_command() : command execution failed\n");
+		return 1;
+	}
+
+	res = i2c_smbus_read_block_data(fd, command, result);
+	if (res < 0)
+	{
+		printf("sbs_exec_block_command() : could not read command result\n");
+		return 1;
+	}
+
+	return 0;
+}
+
+int sbs_block_check_mac(const __u8* data, const __u8* result, int length)
+{
+	if (memcmp(data, result, length) != 0)
+	{
+		printf("sbs_block_check_mac() : bad MAC command : expected");
+		for (int i = 0; i < length; i++)
+			printf(" %.2x", data[i]);
+		printf(", got");
+		for (int i = 0; i < length; i++)
+			printf(" %.2x", result[i]);
+		printf("\n");
+		return 1;
+	}
+	return 0;
+}
+
 
 // Conversion functions
 // ====================
@@ -97,4 +138,5 @@ uint32_t smbus_block_BE_to_ui32(const unsigned char* data, int length)
 	}
 	return res;
 }
+
 #endif

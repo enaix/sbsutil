@@ -11,7 +11,6 @@ enum ControllerDevice
 // ChemicalID
 struct chem_id
 {
-	unsigned char mac[2]; // MAC command
 	uint32_t id;
 };
 
@@ -19,14 +18,12 @@ struct chem_id
 // DeviceType: IC part number
 struct device_type
 {
-	unsigned char mac[2];
 	uint32_t type;
 };
 
 
 struct firmware_version
 {
-	unsigned char mac[2];
 	char fw[32];
 };
 
