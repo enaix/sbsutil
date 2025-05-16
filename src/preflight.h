@@ -126,6 +126,7 @@ void sbs_preflight_check_operation_status(int fd, enum ControllerDevice device)
 			printf("Fuse disarmed\n");
 			break;
 	}
+	printf("\n============\n");
 }
 
 void sbs_preflight_check_sanity(int fd)
@@ -141,6 +142,21 @@ void sbs_preflight_check_sanity(int fd)
 	printf("      Temperature: %uºK\n", (stats.temp));
 	printf("      Voltage: %u mV\n", stats.voltage);
 	printf("      Current: %u mA\n", stats.current);
+
+
+	struct device_metadata meta;
+	printf("    Device metadata : \n");
+	if (sbs_get_device_metadata(&meta, fd) != 0)
+	{
+		printf("sbs_preflight_check_sanity() : PREFLIGHT ERROR\n");
+		quit(fd, 1);
+	}
+
+	printf("      Manufacturing date: %s\n", meta.date);
+	printf("      Serial number: %.4x\n", meta.serial);
+	printf("      Vendor name: %s\n", meta.vendor);
+	printf("      Device name: %s\n", meta.device);
+	printf("      Device chem: %s\n", meta.chemistry);
 }
 
 void sbs_preflight(int fd, enum ControllerDevice device)

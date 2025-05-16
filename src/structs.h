@@ -19,6 +19,17 @@ struct battery_stats
 };
 
 
+struct device_metadata
+{
+	uint16_t date_packed; // Manufactuing date
+	char date[9]; // Manufacturing date in the format DDMMYYYY
+	uint16_t serial;
+	char vendor[32];
+	char device[32];
+	char chemistry[32];
+};
+
+
 
 // Platform-independent ManufacturerAccess structures
 // ==================================================

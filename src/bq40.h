@@ -94,7 +94,7 @@ int bq40_get_firmware_v(struct firmware_version* fw, int fd)
 		return 1;
 	}
 
-	smbus_block_LE_to_u8s(data + 2, 11, fw->fw);
+	smbus_block_LE_to_u8s(data + 2, 11, (__u8*)fw->fw);
 	fw->fw[11] = '\0';
 
 	return 0;
