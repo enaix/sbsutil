@@ -65,11 +65,71 @@ void sbs_preflight_check_firmware_v(int fd, enum ControllerDevice device)
 	printf("    FirmwareVersion : %s\n", fw.fw);
 }
 
+void sbs_preflight_check_operation_status(int fd, enum ControllerDevice device)
+{
+	struct operation_status status;
+	int res;
+
+	printf("\n============\n");
+	switch (device)
+	{
+		case BQ40:
+			res = bq40_get_operation_status(&status, fd);
+			break;
+	}
+
+	if (res != 0)
+	{
+		printf("sbs_preflight_check_operation_status() : PREFLIGHT ERROR\n");
+		quit(fd, 1);
+	}
+
+	printf("\n    OperationStatus :\n      ");
+	switch(status.shutdown)
+	{
+		case SHUTDN_EMERGENCY:
+			printf("[!] EMERGENCY SHUTDOWN\n");
+			break;
+		case SHUTDN_LOW_VOLTAGE:
+			printf("LOW VOLTAGE SHUTDOWN\n");
+			break;
+		case SHUTDN_MANUAL:
+			printf("MANUAL SHUTDOWN\n");
+			break;
+		default:
+			printf("No shutdown status\n");
+			break;
+	}
+
+	printf("      ");
+	switch(status.pf)
+	{
+		case PF_FAIL:
+			printf("[!] PERMANENT FAILURE\n");
+			break;
+		default:
+			printf("No permanent failure\n");
+			break;
+	}
+
+	printf("      ");
+	switch(status.fuse)
+	{
+		case FUSE_DEPLOY:
+			printf("[!] FUSE DEPLOYED\n");
+			break;
+		default:
+			printf("Fuse disarmed\n");
+			break;
+	}
+}
+
 void sbs_preflight(int fd, enum ControllerDevice device)
 {
 	printf("PREFLIGHT : \n");
 	sbs_preflight_check_chemid(fd, device);
 	sbs_preflight_check_devicetype(fd, device);
 	sbs_preflight_check_firmware_v(fd, device);
+	sbs_preflight_check_operation_status(fd, device);
 }
 #endif
