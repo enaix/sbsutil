@@ -8,6 +8,21 @@ enum ControllerDevice
 };
 
 
+// SBS structures
+// ==============
+
+struct battery_stats
+{
+	uint16_t temp;    // K
+	uint16_t voltage; // mV
+	uint16_t current; // mA
+};
+
+
+
+// Platform-independent ManufacturerAccess structures
+// ==================================================
+
 // ChemicalID
 struct chem_id
 {

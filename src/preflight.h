@@ -1,8 +1,12 @@
 #ifndef SBS_PREFLIGHT_H
 #define SBS_PREFLIGHT_H
+// ================
+// Preflight checks
+// ================
 
 #include "src/structs.h"
 #include "src/bq40.h"
+#include "src/sbs.h"
 
 
 void sbs_preflight_check_chemid(int fd, enum ControllerDevice device)
@@ -124,6 +128,21 @@ void sbs_preflight_check_operation_status(int fd, enum ControllerDevice device)
 	}
 }
 
+void sbs_preflight_check_sanity(int fd)
+{
+	struct battery_stats stats;
+	printf("    Battery stats : \n");
+	if (sbs_get_basic_stats(&stats, fd) != 0)
+	{
+		printf("sbs_preflight_check_sanity() : PREFLIGHT ERROR\n");
+		quit(fd, 1);
+	}
+
+	printf("      Temperature: %uºK\n", (stats.temp));
+	printf("      Voltage: %u mV\n", stats.voltage);
+	printf("      Current: %u mA\n", stats.current);
+}
+
 void sbs_preflight(int fd, enum ControllerDevice device)
 {
 	printf("PREFLIGHT : \n");
@@ -131,5 +150,6 @@ void sbs_preflight(int fd, enum ControllerDevice device)
 	sbs_preflight_check_devicetype(fd, device);
 	sbs_preflight_check_firmware_v(fd, device);
 	sbs_preflight_check_operation_status(fd, device);
+	sbs_preflight_check_sanity(fd);
 }
 #endif
