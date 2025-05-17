@@ -40,7 +40,7 @@ int sbs_get_basic_stats(struct battery_stats* stats, int fd)
 		printf("sbs_get_basic_stats() : failed to get current\n");
 		return 1;
 	}
-	stats->current = (uint16_t)res;
+	stats->current = (int16_t)res;
 
 #ifdef ENABLE_DEBUG
 	printf("    word [curr] -> %.4x\n", res);

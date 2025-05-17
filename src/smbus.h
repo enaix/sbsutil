@@ -12,6 +12,7 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 
+#include <linux/i2c.h>
 #include <linux/i2c-dev.h>
 #include <i2c/smbus.h>
 
@@ -22,6 +23,61 @@ enum acpi_sbs_device_addr {
 	ACPI_SBS_MANAGER = 0xa,
 	ACPI_SBS_BATTERY = 0xb,
 };
+
+
+void check_device_capabilities(int fd)
+{
+	unsigned long funcs;
+	if (ioctl(fd, I2C_FUNCS, &funcs))
+	{
+		printf("check_device_capabilities() : failed to get supported functions\n");
+		close(fd);
+		exit(1);
+	}
+
+	// linux/i2c.h
+	const unsigned long flags[] = {I2C_FUNC_I2C, I2C_FUNC_10BIT_ADDR, I2C_FUNC_PROTOCOL_MANGLING, I2C_FUNC_SMBUS_PEC, I2C_FUNC_NOSTART, I2C_FUNC_SLAVE,
+				I2C_FUNC_SMBUS_BLOCK_PROC_CALL, I2C_FUNC_SMBUS_QUICK, I2C_FUNC_SMBUS_BYTE, I2C_FUNC_SMBUS_BYTE_DATA,
+				I2C_FUNC_SMBUS_WORD_DATA, I2C_FUNC_SMBUS_PROC_CALL, I2C_FUNC_SMBUS_BLOCK_DATA, I2C_FUNC_SMBUS_I2C_BLOCK,
+				I2C_FUNC_SMBUS_HOST_NOTIFY};
+
+	const char* c_flags[] = {"I2C_FUNC_I2C", "I2C_FUNC_10BIT_ADDR", "I2C_FUNC_PROTOCOL_MANGLING", "I2C_FUNC_SMBUS_PEC", "I2C_FUNC_NOSTART", "I2C_FUNC_SLAVE",
+				"I2C_FUNC_SMBUS_BLOCK_PROC_CALL", "I2C_FUNC_SMBUS_QUICK", "I2C_FUNC_SMBUS_BYTE", "I2C_FUNC_SMBUS_BYTE_DATA",
+				"I2C_FUNC_SMBUS_WORD_DATA", "I2C_FUNC_SMBUS_PROC_CALL", "I2C_FUNC_SMBUS_BLOCK_DATA", "I2C_FUNC_SMBUS_I2C_BLOCK",
+				"I2C_FUNC_SMBUS_HOST_NOTIFY"};
+
+	const unsigned long flags_required[] = {I2C_FUNC_I2C, I2C_FUNC_SLAVE,
+				I2C_FUNC_SMBUS_BLOCK_PROC_CALL, I2C_FUNC_SMBUS_QUICK, I2C_FUNC_SMBUS_BYTE, I2C_FUNC_SMBUS_BYTE_DATA,
+				I2C_FUNC_SMBUS_WORD_DATA, I2C_FUNC_SMBUS_PROC_CALL, I2C_FUNC_SMBUS_BLOCK_DATA, I2C_FUNC_SMBUS_I2C_BLOCK,
+				I2C_FUNC_SMBUS_HOST_NOTIFY};
+
+	const char* c_flags_required[] = {"I2C_FUNC_I2C", "I2C_FUNC_SLAVE",
+				"I2C_FUNC_SMBUS_BLOCK_PROC_CALL", "I2C_FUNC_SMBUS_QUICK", "I2C_FUNC_SMBUS_BYTE", "I2C_FUNC_SMBUS_BYTE_DATA",
+				"I2C_FUNC_SMBUS_WORD_DATA", "I2C_FUNC_SMBUS_PROC_CALL", "I2C_FUNC_SMBUS_BLOCK_DATA", "I2C_FUNC_SMBUS_I2C_BLOCK",
+				"I2C_FUNC_SMBUS_HOST_NOTIFY"};
+	
+	static const int flags_n = sizeof(flags) / sizeof(const unsigned long), flags_required_n = sizeof(flags_required) / sizeof(const unsigned long);
+
+#ifdef ENABLE_DEBUG
+	printf("device capabilities : ");
+	for (int i = 0; i < flags_n; i++)
+	{
+		if ((funcs & flags[i]) > 0)
+			printf("%s ", c_flags[i]);
+	}
+	printf("\n");
+#endif
+
+	for (int i = 0; i < flags_required_n; i++)
+	{
+		if ((funcs & flags_required[i]) == 0)
+		{
+			printf("check_device_capabilities() : device does not support %s\n", c_flags_required[i]);
+			close(fd);
+			exit(1);
+		}
+	}
+}
 
 
 int device_open(int adapter)
@@ -35,6 +91,7 @@ int device_open(int adapter)
 		exit(1);
 	}
 
+	check_device_capabilities(fd);
 	if (ioctl(fd, I2C_SLAVE, ACPI_SBS_BATTERY) < 0)
 	{
 		printf("device_open() : could not change device address\n");

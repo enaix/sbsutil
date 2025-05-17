@@ -15,7 +15,7 @@ struct battery_stats
 {
 	uint16_t temp;    // K
 	uint16_t voltage; // mV
-	uint16_t current; // mA
+	int16_t current; // mA
 };
 
 

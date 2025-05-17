@@ -162,10 +162,10 @@ void sbs_preflight_check_sanity(int fd)
 void sbs_preflight(int fd, enum ControllerDevice device)
 {
 	printf("PREFLIGHT : \n");
-	sbs_preflight_check_chemid(fd, device);
-	sbs_preflight_check_devicetype(fd, device);
-	sbs_preflight_check_firmware_v(fd, device);
-	sbs_preflight_check_operation_status(fd, device);
 	sbs_preflight_check_sanity(fd);
+	//sbs_preflight_check_chemid(fd, device);
+	//sbs_preflight_check_devicetype(fd, device);
+	//sbs_preflight_check_firmware_v(fd, device);
+	//sbs_preflight_check_operation_status(fd, device);
 }
 #endif

@@ -3,7 +3,7 @@ C=gcc
 CFLAGS = -Wall #-Werror=return-type
 # Sanitizer disabled by default
 
-CFLAGS_DEBUG = -g -DENABLE_DEBUG
+CFLAGS_DEBUG = -g -DENABLE_DEBUG -O2
 CFLAGS_RELEASE = -O3 -DNDEBUG
 
 # Linux headers
@@ -24,11 +24,12 @@ TARGETS = sbsutil
 INCLUDE = -I.
 LINK = -li2c
 
-prerun:
-	$(shell mkdir -p build)
 
 .PHONY: all
 all: release
+
+prerun:
+	$(shell mkdir -p build)
 
 .PHONY: debug
 debug: CFLAGS += ${CFLAGS_DEBUG}
