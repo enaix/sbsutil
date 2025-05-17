@@ -46,15 +46,13 @@ void check_device_capabilities(int fd)
 				"I2C_FUNC_SMBUS_WORD_DATA", "I2C_FUNC_SMBUS_PROC_CALL", "I2C_FUNC_SMBUS_BLOCK_DATA", "I2C_FUNC_SMBUS_I2C_BLOCK",
 				"I2C_FUNC_SMBUS_HOST_NOTIFY"};
 
-	const unsigned long flags_required[] = {I2C_FUNC_I2C, I2C_FUNC_SLAVE,
-				I2C_FUNC_SMBUS_BLOCK_PROC_CALL, I2C_FUNC_SMBUS_QUICK, I2C_FUNC_SMBUS_BYTE, I2C_FUNC_SMBUS_BYTE_DATA,
-				I2C_FUNC_SMBUS_WORD_DATA, I2C_FUNC_SMBUS_PROC_CALL, I2C_FUNC_SMBUS_BLOCK_DATA, I2C_FUNC_SMBUS_I2C_BLOCK,
-				I2C_FUNC_SMBUS_HOST_NOTIFY};
+	const unsigned long flags_required[] = {/*I2C_FUNC_I2C, I2C_FUNC_SLAVE,*/
+				I2C_FUNC_SMBUS_BYTE, I2C_FUNC_SMBUS_BYTE_DATA,
+				I2C_FUNC_SMBUS_WORD_DATA, I2C_FUNC_SMBUS_BLOCK_DATA};
 
-	const char* c_flags_required[] = {"I2C_FUNC_I2C", "I2C_FUNC_SLAVE",
-				"I2C_FUNC_SMBUS_BLOCK_PROC_CALL", "I2C_FUNC_SMBUS_QUICK", "I2C_FUNC_SMBUS_BYTE", "I2C_FUNC_SMBUS_BYTE_DATA",
-				"I2C_FUNC_SMBUS_WORD_DATA", "I2C_FUNC_SMBUS_PROC_CALL", "I2C_FUNC_SMBUS_BLOCK_DATA", "I2C_FUNC_SMBUS_I2C_BLOCK",
-				"I2C_FUNC_SMBUS_HOST_NOTIFY"};
+	const char* c_flags_required[] = {/*"I2C_FUNC_I2C", "I2C_FUNC_SLAVE",*/
+				"I2C_FUNC_SMBUS_BYTE", "I2C_FUNC_SMBUS_BYTE_DATA",
+				"I2C_FUNC_SMBUS_WORD_DATA", "I2C_FUNC_SMBUS_BLOCK_DATA"};
 	
 	static const int flags_n = sizeof(flags) / sizeof(const unsigned long), flags_required_n = sizeof(flags_required) / sizeof(const unsigned long);
 
@@ -113,12 +111,20 @@ void quit(int fd, int status)
 // =================
 
 
+void sbs_log_error(__s32 res)
+{
+	int err = (int)(-res);
+	printf("SMBus I/O error : %s\n", strerror(err));
+}
+
+
 int sbs_exec_block_command(__u8 command, const __u8* data, __u8* result, int length, int fd)
 {
 	__s32 res = i2c_smbus_write_block_data(fd, command, length, data);
 	if (res < 0)
 	{
 		printf("sbs_exec_block_command() : command execution failed\n");
+		sbs_log_error(res);
 		return 1;
 	}
 
@@ -126,6 +132,7 @@ int sbs_exec_block_command(__u8 command, const __u8* data, __u8* result, int len
 	if (res < 0)
 	{
 		printf("sbs_exec_block_command() : could not read command result\n");
+		sbs_log_error(res);
 		return 1;
 	}
 

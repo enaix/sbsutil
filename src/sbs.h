@@ -14,6 +14,7 @@ int sbs_get_basic_stats(struct battery_stats* stats, int fd)
 	if (res < 0)
 	{
 		printf("sbs_get_basic_stats() : failed to get temperature\n");
+		sbs_log_error(res);
 		return 1;
 	}
 	stats->temp = (uint16_t)res;
@@ -26,6 +27,7 @@ int sbs_get_basic_stats(struct battery_stats* stats, int fd)
 	if (res < 0)
 	{
 		printf("sbs_get_basic_stats() : failed to get voltage\n");
+		sbs_log_error(res);
 		return 1;
 	}
 	stats->voltage = (uint16_t)res;
@@ -38,6 +40,7 @@ int sbs_get_basic_stats(struct battery_stats* stats, int fd)
 	if (res < 0)
 	{
 		printf("sbs_get_basic_stats() : failed to get current\n");
+		sbs_log_error(res);
 		return 1;
 	}
 	stats->current = (int16_t)res;
@@ -56,6 +59,7 @@ int sbs_get_device_metadata(struct device_metadata* meta, int fd)
 	if (res < 0)
 	{
 		printf("sbs_get_device_metadata() : failed to get manufacturing date\n");
+		sbs_log_error(res);
 		return 1;
 	}
 	meta->date_packed = (uint16_t)res;
@@ -69,6 +73,7 @@ int sbs_get_device_metadata(struct device_metadata* meta, int fd)
 	if (res < 0)
 	{
 		printf("sbs_get_device_metadata() : failed to get serial number\n");
+		sbs_log_error(res);
 		return 1;
 	}
 	meta->serial = (uint16_t)res;
@@ -82,6 +87,7 @@ int sbs_get_device_metadata(struct device_metadata* meta, int fd)
 	if (res < 0)
 	{
 		printf("sbs_get_device_metadata() : failed to get manufacturer name\n");
+		sbs_log_error(res);
 		return 1;
 	}
 
@@ -96,6 +102,7 @@ int sbs_get_device_metadata(struct device_metadata* meta, int fd)
 	if (res < 0)
 	{
 		printf("sbs_get_device_metadata() : failed to get device name\n");
+		sbs_log_error(res);
 		return 1;
 	}
 
@@ -110,6 +117,7 @@ int sbs_get_device_metadata(struct device_metadata* meta, int fd)
 	if (res < 0)
 	{
 		printf("sbs_get_device_metadata() : failed to get device chemistry\n");
+		sbs_log_error(res);
 		return 1;
 	}
 
