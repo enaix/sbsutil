@@ -31,6 +31,42 @@ struct device_metadata
 
 
 
+const char* BatteryAlarmName[] = {"Overcharged Alarm", "Terminate Charge Alarm", "Overtemperature Alarm", "Terminate Discharge Alarm", "Remaining Capacity Alarm", "Remaining Time Alarm"};
+
+enum BatteryAlarm
+{
+	ALARM_OVERCHARGE,
+	ALARM_TERMINATE_CHARGE,
+	ALARM_TEMP,
+	ALARM_TERMINATE_DISCHARGE,
+	ALARM_REMAINING_CAP,
+	ALARM_REMAINING_TIME,
+	ALARM_NONE
+};
+
+const char* BatteryErrorName[] = {"OK", "Busy", "Reserved Command", "Unsupported Command", "AccessDenied", "Overflow/Underflow", "BadSize", "UnknownError"};
+
+enum BatteryError
+{
+	SBS_ERROR_NONE = 0x0,
+	SBS_ERROR_BUSY = 0x1,
+	SBS_COMMAND_RESERVED = 0x2,
+	SBS_COMMAND_UNSUPPORTED = 0x3,
+	SBS_ACCESS_DENIED = 0x4,
+	SBS_OU_FLOW = 0x5, // over/underflow
+	SBS_BAD_SIZE = 0x6,
+	SBS_ERROR_UNKNOWN = 0x7
+};
+
+struct battery_status
+{
+	enum BatteryAlarm alarms[ALARM_NONE];
+	int alarms_num;
+	enum BatteryError error;
+};
+
+
+
 // Platform-independent ManufacturerAccess structures
 // ==================================================
 

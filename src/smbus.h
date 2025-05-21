@@ -78,10 +78,10 @@ void check_device_capabilities(int fd)
 }
 
 
-int device_open(int adapter)
+int device_open(char* fname)
 {
-	char fname[32];
-	snprintf(fname, 31, "/dev/i2c-%d", adapter);
+	//char fname[32];
+	//snprintf(fname, 31, "/dev/i2c-%d", adapter);
 	int fd = open(fname, O_RDWR);
 	if (fd < 0)
 	{
@@ -115,6 +115,36 @@ void sbs_log_error(__s32 res)
 {
 	int err = (int)(-res);
 	printf("SMBus I/O error : %s\n", strerror(err));
+}
+
+
+__s32 sbs_read_word(int fd, __u8 command)
+{
+	__s32 res = i2c_smbus_read_word_data(fd, command);
+	if (res < 0)
+	{
+		printf("sbs_read_word() : command execution failed\n");
+		sbs_log_error(res);
+	}
+	return res;
+}
+
+
+__s32 sbs_read_block(int fd, __u8 command, __u8* result)
+{
+	__s32 res = i2c_smbus_read_block_data(fd, command, result);
+	if (res < 0)
+	{
+		int err = (int)(-res);
+		if (err == EPROTO)
+		{
+			printf("sbs_read_block() : slave returned non-standard block size\n");
+			return 0;
+		}
+		printf("sbs_read_block() : command execution failed\n");
+		sbs_log_error(res);
+	}
+	return res;
 }
 
 

@@ -159,10 +159,31 @@ void sbs_preflight_check_sanity(int fd)
 	printf("      Device chem: %s\n", meta.chemistry);
 }
 
+void sbs_preflight_check_status(int fd)
+{
+	struct battery_status status;
+	printf("    SBS Status : \n");
+	if (sbs_get_status(&status, fd) != 0)
+	{
+		printf("sbs_preflight_check_status() : PREFLIGHT ERROR\n");
+		quit(fd, 1);
+	}
+
+	printf("      Alarms: ");
+	for (int i = 0; i < status.alarms_num; i++)
+	{
+		printf("[%s] ", BatteryAlarmName[i]);
+	}
+	printf("\n");
+
+	printf("      Error code: [%s]\n", BatteryErrorName[status.error]);
+}
+
 void sbs_preflight(int fd, enum ControllerDevice device)
 {
 	printf("PREFLIGHT : \n");
 	sbs_preflight_check_sanity(fd);
+	sbs_preflight_check_status(fd);
 	//sbs_preflight_check_chemid(fd, device);
 	//sbs_preflight_check_devicetype(fd, device);
 	//sbs_preflight_check_firmware_v(fd, device);

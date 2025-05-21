@@ -122,7 +122,7 @@ int bq40_get_operation_status(struct operation_status* status, int fd)
 		return 1;
 	}
 
-	uint32_t flags = *(uint32_t*)data;
+	uint32_t flags = *(uint32_t*)data; // easier to do flags & (1 << bits);
 	status->shutdown = ( ((flags >> 29) & 1) == 1 ? SHUTDN_EMERGENCY :
 			( ((flags >> 10) & 1) == 1 ? SHUTDN_LOW_VOLTAGE :
 			 ( ((flags >> 16) & 1) == 1 ? SHUTDN_MANUAL :

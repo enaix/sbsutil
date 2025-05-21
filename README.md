@@ -10,7 +10,7 @@ This project requires userspace Linux headers (`linux-api-headers`, aka `linux-l
 
 ## Usage
 
-`sudo ./build/sbsutil <i2c_device_number>`
+`sudo ./build/sbsutil path-to-i2c-device`
 
 Right now, this utility attempts to dump battery information, early WIP
 

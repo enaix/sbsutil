@@ -9,7 +9,7 @@
 void print_help(char** argv)
 {
 	printf("%s: usage :\n", argv[0]);
-	printf("%s <i2c-adapter-num>\n", argv[0]);
+	printf("%s path-to-i2c-device\n", argv[0]);
 }
 
 int main(int argc, char** argv)
@@ -20,13 +20,14 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
-	errno = 0;
+	char* adapter = argv[1];
+	/*errno = 0;
 	int adapter = (int)strtol(argv[1], NULL, 10);
 	if (errno != 0)
 	{
 		print_help(argv);
 		return 1;
-	}
+	}*/
 
 	int fd = device_open(adapter);
 	sbs_preflight(fd, BQ40);

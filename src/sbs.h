@@ -10,11 +10,10 @@
 
 int sbs_get_basic_stats(struct battery_stats* stats, int fd)
 {
-	__s32 res = i2c_smbus_read_word_data(fd, 0x08);
+	__s32 res = sbs_read_word(fd, 0x08);
 	if (res < 0)
 	{
 		printf("sbs_get_basic_stats() : failed to get temperature\n");
-		sbs_log_error(res);
 		return 1;
 	}
 	stats->temp = (uint16_t)res;
@@ -23,11 +22,10 @@ int sbs_get_basic_stats(struct battery_stats* stats, int fd)
 	printf("    word [temp] -> %.4x\n", res);
 #endif
 
-	res = i2c_smbus_read_word_data(fd, 0x09);
+	res = sbs_read_word(fd, 0x09);
 	if (res < 0)
 	{
 		printf("sbs_get_basic_stats() : failed to get voltage\n");
-		sbs_log_error(res);
 		return 1;
 	}
 	stats->voltage = (uint16_t)res;
@@ -36,11 +34,10 @@ int sbs_get_basic_stats(struct battery_stats* stats, int fd)
 	printf("    word [volt] -> %.4x\n", res);
 #endif
 
-	res = i2c_smbus_read_word_data(fd, 0x0a);
+	res = sbs_read_word(fd, 0x0a);
 	if (res < 0)
 	{
 		printf("sbs_get_basic_stats() : failed to get current\n");
-		sbs_log_error(res);
 		return 1;
 	}
 	stats->current = (int16_t)res;
@@ -55,11 +52,10 @@ int sbs_get_basic_stats(struct battery_stats* stats, int fd)
 
 int sbs_get_device_metadata(struct device_metadata* meta, int fd)
 {
-	__s32 res = i2c_smbus_read_word_data(fd, 0x1b);
+	__s32 res = sbs_read_word(fd, 0x1b);
 	if (res < 0)
 	{
 		printf("sbs_get_device_metadata() : failed to get manufacturing date\n");
-		sbs_log_error(res);
 		return 1;
 	}
 	meta->date_packed = (uint16_t)res;
@@ -69,11 +65,10 @@ int sbs_get_device_metadata(struct device_metadata* meta, int fd)
 	printf("    word [date] -> %.4x\n", res);
 #endif
 
-	res = i2c_smbus_read_word_data(fd, 0x1c);
+	res = sbs_read_word(fd, 0x1c);
 	if (res < 0)
 	{
 		printf("sbs_get_device_metadata() : failed to get serial number\n");
-		sbs_log_error(res);
 		return 1;
 	}
 	meta->serial = (uint16_t)res;
@@ -83,11 +78,10 @@ int sbs_get_device_metadata(struct device_metadata* meta, int fd)
 #endif
 
 	__u8 data[32] = {};
-	res = i2c_smbus_read_block_data(fd, 0x20, data);
+	res = sbs_read_block(fd, 0x20, data);
 	if (res < 0)
 	{
 		printf("sbs_get_device_metadata() : failed to get manufacturer name\n");
-		sbs_log_error(res);
 		return 1;
 	}
 
@@ -98,11 +92,10 @@ int sbs_get_device_metadata(struct device_metadata* meta, int fd)
 	smbus_print_block(data);
 #endif
 
-	res = i2c_smbus_read_block_data(fd, 0x21, data);
+	res = sbs_read_block(fd, 0x21, data);
 	if (res < 0)
 	{
 		printf("sbs_get_device_metadata() : failed to get device name\n");
-		sbs_log_error(res);
 		return 1;
 	}
 
@@ -113,11 +106,10 @@ int sbs_get_device_metadata(struct device_metadata* meta, int fd)
 	smbus_print_block(data);
 #endif
 
-	res = i2c_smbus_read_block_data(fd, 0x22, data);
+	res = sbs_read_block(fd, 0x22, data);
 	if (res < 0)
 	{
 		printf("sbs_get_device_metadata() : failed to get device chemistry\n");
-		sbs_log_error(res);
 		return 1;
 	}
 
@@ -128,6 +120,37 @@ int sbs_get_device_metadata(struct device_metadata* meta, int fd)
 	smbus_print_block(data);
 #endif
 
+	return 0;
+}
+
+
+int sbs_get_status(struct battery_status* status, int fd)
+{
+	__s32 res = sbs_read_word(fd, 0x16);
+	if (res < 0)
+	{
+		printf("sbs_get_status() : failed to get status\n");
+		return 1;
+	}
+
+#ifdef ENABLE_DEBUG
+	printf("    word [stat] -> %.4x\n", res);
+#endif
+
+	int alarm_bits[] = {15, 14, 12, 11, 9, 8};
+	status->alarms_num = 0;
+
+	for (int a = ALARM_OVERCHARGE; a < ALARM_NONE; a++)
+	{
+		if (res & (1 << alarm_bits[a]))
+		{
+			status->alarms[status->alarms_num] = a;
+			status->alarms_num++;
+		}
+	}
+
+	status->error = res & 0b111;
+	
 	return 0;
 }
 
