@@ -2,10 +2,21 @@
 #define SBS_STRUCTS_H
 #include <stdint.h>
 
+
+// Application structures
+// ======================
+
 enum ControllerDevice
 {
 	BQ40,
 };
+
+struct args
+{
+	int verbose; // print verbose info, including dumps
+	char* file;  // read from i2c device instead of EC
+};
+
 
 
 // SBS structures

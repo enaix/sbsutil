@@ -14,8 +14,38 @@ void print_help(char** argv)
 
 int main(int argc, char** argv)
 {
-	if (argc != 2)
+	struct args config{.verbose = 0, .file=NULL};
+
+	struct option opts[] = {
+		{"help", no_argument, NULL, 'h'},
+		{"verbose", no_argument, NULL, 'v'},
+		{"file", optional_argument, NULL, 'f'},
+		{NULL, 0, NULL, 0}
+	};
+	int opt = 0;
+
+	while(getopt_long(argc, argv, "hvf::"))
 	{
+		switch (opt)
+		{
+			case 'h':
+				print_help(argv);
+				return 0;
+
+			case 'v':
+				config.verbose = 1;
+			case 'f':
+				config.file = optarg; // pointer to argv, safe to assign
+			default:
+				print_help(argv);
+				return 1;
+		}
+	}
+
+	if (optind < argc)
+	{
+		for (int i = optind; i < argc; i++)
+			printf("Argument not recognised: %s\n", argv[index]);
 		print_help(argv);
 		return 1;
 	}
