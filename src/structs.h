@@ -11,11 +11,21 @@ enum ControllerDevice
 	BQ40,
 };
 
+
+struct sbs_device
+{
+	int hid_index; // index of the hid device
+	__u8 offset;     // device address
+};
+
+
 struct args
 {
 	int verbose; // print verbose info, including dumps
 	int i2c;     // read from the i2c device instead of EC
 	char* file;  // i2c device path
+
+	struct sbs_device dev;
 };
 
 

@@ -14,6 +14,7 @@ void print_help(char** argv)
 
 int main(int argc, char** argv)
 {
+	
 	struct args config{.verbose=0, .i2c=0, .file=NULL};
 
 	struct option opts[] = {
@@ -67,6 +68,8 @@ int main(int argc, char** argv)
 	}*/
 
 	int fd = device_open(config);
+	if (fd < 0)
+		return 1;
 	sbs_preflight(fd, BQ40);
 
 	quit(fd, 0);
