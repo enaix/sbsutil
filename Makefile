@@ -1,10 +1,22 @@
 C=gcc
 
-CFLAGS = -Wall #-Werror=return-type
+
+# Compilation options
+# ===================
+
+ENABLE_I2C ?= 1 # i2c is enabled by default
+
+CFLAGS = -Wall  #-Werror=return-type
 # Sanitizer disabled by default
 
 CFLAGS_DEBUG = -g -DENABLE_DEBUG -O2
 CFLAGS_RELEASE = -O3 -DNDEBUG
+
+
+ifeq (${ENABLE_I2C}, "1")
+	CFLAGS += -DSBS_ENABLE_I2C
+endif
+
 
 # Linux headers
 # =============
@@ -22,8 +34,11 @@ TARGETS = sbsutil
 #OBJ = $(SRC_FILES:.c=.o)
 #INCLUDE = -I. -I${LINUX_HEADERS} -I${LINUX_HEADERS}/uapi/ -I ${ARCH_HEADERS} -I${ARCH_HEADERS}/uapi/ -I${ARCH_HEADERS}/generated/uapi/ -I${ARCH_HEADERS}/generated/
 INCLUDE = -I.
-LINK = -li2c
+LINK =
 
+ifeq (${ENABLE_I2C}, "1")
+	LINK += -li2c
+endif
 
 .PHONY: all
 all: release

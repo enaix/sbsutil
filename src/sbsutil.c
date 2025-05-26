@@ -14,7 +14,7 @@ void print_help(char** argv)
 
 int main(int argc, char** argv)
 {
-	struct args config{.verbose = 0, .file=NULL};
+	struct args config{.verbose=0, .i2c=0, .file=NULL};
 
 	struct option opts[] = {
 		{"help", no_argument, NULL, 'h'},
@@ -34,8 +34,15 @@ int main(int argc, char** argv)
 
 			case 'v':
 				config.verbose = 1;
+				break;
 			case 'f':
+				#ifndef SBS_ENABLE_I2C
+				printf("sbsutil was compiled without I2C support.\n");
+				return 1;
+				#endif
+				config.i2c = 1;
 				config.file = optarg; // pointer to argv, safe to assign
+				break;
 			default:
 				print_help(argv);
 				return 1;
@@ -50,7 +57,7 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
-	char* adapter = argv[1];
+	//char* adapter = argv[1];
 	/*errno = 0;
 	int adapter = (int)strtol(argv[1], NULL, 10);
 	if (errno != 0)
@@ -59,7 +66,7 @@ int main(int argc, char** argv)
 		return 1;
 	}*/
 
-	int fd = device_open(adapter);
+	int fd = device_open(config);
 	sbs_preflight(fd, BQ40);
 
 	quit(fd, 0);

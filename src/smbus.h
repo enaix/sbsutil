@@ -12,10 +12,15 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 
+#include <linux/types.h>
+
+#ifdef SBS_ENABLE_I2C
 #include <linux/i2c.h>
 #include <linux/i2c-dev.h>
 #include <i2c/smbus.h>
+#endif
 
+#include "src/structs.h"
 
 // linux/drivers/acpi/sbshc.h
 enum acpi_sbs_device_addr {
@@ -27,6 +32,7 @@ enum acpi_sbs_device_addr {
 
 void check_device_capabilities(int fd)
 {
+	#ifdef SBS_ENABLE_I2C
 	unsigned long funcs;
 	if (ioctl(fd, I2C_FUNCS, &funcs))
 	{
@@ -75,29 +81,44 @@ void check_device_capabilities(int fd)
 			exit(1);
 		}
 	}
+	#endif
 }
 
 
-int device_open(char* fname)
+int device_open(const struct args* c)
 {
 	//char fname[32];
 	//snprintf(fname, 31, "/dev/i2c-%d", adapter);
-	int fd = open(fname, O_RDWR);
-	if (fd < 0)
+	
+	// Read from the i2c bus
+	if (c->i2c)
 	{
-		printf("device_open() : could not open device\n");
-		exit(1);
-	}
+		#ifdef SBS_ENABLE_I2C
+		int fd = open(c->file, O_RDWR);
+		if (fd < 0)
+		{
+			printf("device_open() : could not open device\n");
+			exit(1);
+		}
 
-	check_device_capabilities(fd);
-	if (ioctl(fd, I2C_SLAVE, ACPI_SBS_BATTERY) < 0)
+		check_device_capabilities(fd);
+		if (ioctl(fd, I2C_SLAVE, ACPI_SBS_BATTERY) < 0)
+		{
+			printf("device_open() : could not change device address\n");
+			close(fd);
+			exit(1);
+		}
+
+		return fd;
+		#else
+		return -1;
+		#endif
+	}
+	else
 	{
-		printf("device_open() : could not change device address\n");
-		close(fd);
-		exit(1);
+		// Access EC
+		return -1;
 	}
-
-	return fd;
 }
 
 
@@ -120,6 +141,7 @@ void sbs_log_error(__s32 res)
 
 __s32 sbs_read_word(int fd, __u8 command)
 {
+	#ifdef SBS_ENABLE_I2C
 	__s32 res = i2c_smbus_read_word_data(fd, command);
 	if (res < 0)
 	{
@@ -127,11 +149,15 @@ __s32 sbs_read_word(int fd, __u8 command)
 		sbs_log_error(res);
 	}
 	return res;
+	#else
+	return -1;
+	#endif
 }
 
 
 __s32 sbs_read_block(int fd, __u8 command, __u8* result)
 {
+	#ifdef SBS_ENABLE_I2C
 	__s32 res = i2c_smbus_read_block_data(fd, command, result);
 	if (res < 0)
 	{
@@ -145,11 +171,15 @@ __s32 sbs_read_block(int fd, __u8 command, __u8* result)
 		sbs_log_error(res);
 	}
 	return res;
+	#else
+	return -1;
+	#endif
 }
 
 
 int sbs_exec_block_command(__u8 command, const __u8* data, __u8* result, int length, int fd)
 {
+	#ifdef SBS_ENABLE_I2C
 	__s32 res = i2c_smbus_write_block_data(fd, command, length, data);
 	if (res < 0)
 	{
@@ -167,6 +197,9 @@ int sbs_exec_block_command(__u8 command, const __u8* data, __u8* result, int len
 	}
 
 	return 0;
+	#else
+	return -1;
+	#endif
 }
 
 int sbs_block_check_mac(const __u8* data, const __u8* result, int length)

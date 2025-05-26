@@ -14,7 +14,8 @@ enum ControllerDevice
 struct args
 {
 	int verbose; // print verbose info, including dumps
-	char* file;  // read from i2c device instead of EC
+	int i2c;     // read from the i2c device instead of EC
+	char* file;  // i2c device path
 };
 
 
