@@ -12,9 +12,10 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <dirent.h>
+#include <unistd.h>
 
 #include <linux/types.h>
-#include <asm/io.h>
+#include <sys/io.h>
 
 // i2c drivers
 #ifdef SBS_ENABLE_I2C
@@ -22,10 +23,6 @@
 #include <linux/i2c-dev.h>
 #include <i2c/smbus.h>
 #endif
-
-// ACPI
-#include <acpi/acpi.h>
-#include <acpi/acpi_bus.h>
 
 #include "src/structs.h"
 
@@ -109,68 +106,138 @@ void check_device_capabilities(int fd)
 }
 
 
-int probe_acpi_tables(struct args* c)
+int call_ec_method(struct args* c, const char* device, int use_acpi_call)
 {
-	
-	// https://lwn.net/Articles/367630/
-	// linux/tools/power/acpi/tools/acpidump/apdump.c
-
-	struct acpi_table_header* table;
-	acpi_physical_address addr;
-	acpi_status status;
-	int table_status;
-	
-	for (int instance = 0; instance < AP_MAX_ACPI_FILES, instance++)
+	if (use_acpi_call)
 	{
-		status = acpi_os_get_table_by_name(ACPI_SIG_DSDT, instance, &table, &address);
-		if (ACPI_FAILURE(status))
+		char buf[256];
+		char path[] = "/proc/acpi/call";
+		unsigned long long val;
+
+		snprintf(buf, sizeof(buf), "%s._EC", device);
+		int fd = open(path, O_RDWR);
+		if (fd < 0)
 		{
-			if (status == AE_LIMIT)
-			{
-				if (instance == 0)
-				{
-					printf("probe_acpi_tables() : no DSDT ACPI table found\n");
-					return -1;
-				}
-				// else ok
-			}
-			else
-			{
-				printf("probe_acpi_tables() : could not get DSDT ACPI table : %s\n", local_signature, acpi_format_exception(status));
-				return -1;
-			}
-
+			printf("call_ec_method() : failed to open %s : %s\n", path, strerror(errno));
+			return -1;
 		}
-		// table->length includes the header
-		// we now can now access ASCII ASL 
 
-		ACPI_FREE(table);
+		ssize_t bytes = write(fd, buf, strlen(buf));
+	
+		if (bytes < 0)
+		{
+			printf("call_ec_method() : failed to execute %s call : %s\n", buf, strerror(errno));
+			close(fd);
+			return -1;
+		}
+	
+		char res[32];
+		bytes = read(fd, res, 32);
+	
+		if (bytes < 0)
+		{
+			printf("call_ec_method() : failed to read %s method result : %s\n", buf, strerror(errno));
+			close(fd);
+			return -1;
+		}
+
+		close(fd);
+		
+		// Check the result
+
+		if (res[0] == '0' && res[1] == 'x')
+		{
+			// success
+			#ifdef ENABLE_DEBUG
+			printf("call_ec_method() : success : acpi_call returned %s\n", res);
+			#endif
+			
+			val = atoi(res + 2);
+			// linux/drivers/acpi/sbshc.c
+			c->dev.offset = (val >> 8) & 0xff;
+		}
+		else if (strcmp(res, "not called") == 0)
+		{
+			printf("call_ec_method() : acpi_call returned nothing\n");
+			return -1;
+		}
+		else if (!strstr(res, "Error:"))
+		{
+			printf("call_ec_method() : acpi_call : %s\n", res);
+			return -1;
+		}
+		else
+		{
+			printf("call_ec_method() : acpi_call returned unsupported type : %s\n", res);
+			return -1;
+		}
+		return 1;
+	}
+	else
+	{
+		char path[256];
+		snprintf(path, sizeof(path), "/sys/kernel/debug/acpi/%s/call", device);
+		int fd = open(path, O_RDWR);
+		if (fd < 0)
+		{
+			printf("call_ec_method() : failed to open %s : %s\n", path, strerror(errno));
+			return -1;
+		}
+
+		char cmd[] = "EC";
+		ssize_t bytes = write(fd, cmd, sizeof(cmd) / sizeof(char));
+	
+		if (bytes < 0)
+		{
+			printf("call_ec_method() : failed to execute %s method : %s\n", cmd, strerror(errno));
+			close(fd);
+			return -1;
+		}
+	
+		char buf[32];
+		bytes = read(fd, buf, 32);
+	
+		if (bytes < 0)
+		{
+			printf("call_ec_method() : failed to read %s method result : %s\n", cmd, strerror(errno));
+			close(fd);
+			return -1;
+		}
+		// TODO fetch result
+		printf("call_ec_method() : result : %s\n", buf);
+
+	
+		close(fd);
+		return 1;
 	}
 }
 
+
 int probe_acpi_device(struct args* c)
 {
-	struct acpi_device* dev = NULL;
+	// https://lwn.net/Articles/367630/
+	
 	// Iterate over each device which matches the criteria
 	// Check which devices are present on the system bus
-	/*DIR *dir;
+	DIR *dir;
 	struct dirent* dir_e;
-	d = opendir("/sys/bus/acpi/devices");
-	if (!d)
+	dir = opendir("/sys/bus/acpi/devices");
+	if (!dir)
 	{
 		printf("probe_acpi_tables() : could not access /sys/bus/acpi/devices : %s\n", strerror(errno));
 		return -1;
 	}
 
-	while ((dir_e = opendir()) != NULL)
+	int device_num = 0;
+	while ((dir_e = readdir(dir)) != NULL)
 	{
-		char* fname_hid = dir_e->d_name;
-		strcat(fname_hid, "/hid"); // path to hid file
+		char fname[264];
+		snprintf(fname, 264, "%s/hid", dir_e->d_name); // path to hid file
 
-		int fd_hid = open(fname_hid, O_RDONLY);
+		int fd_hid = open(fname, O_RDONLY);
 		if (fd_hid < 0)
 		{
-			printf("probe_acpi_device() : could not open file %s : %s\n", fname_hid, strerror(errno));
+			printf("probe_acpi_device() : could not open file %s : %s\n", fname, strerror(errno));
 			return -1;
 		}
 
@@ -179,88 +246,70 @@ int probe_acpi_device(struct args* c)
 		if (res < 0 || res == 32)
 		{
 			if (res == 32)
-				printf("probe_acpi_device() : %s has bad hid format\n");
+				printf("probe_acpi_device() : %s has bad hid format\n", fname);
 			else
-				printf("probe_acpi_device() : could not read file %s : %s\n", fname_hid, strerror(errno));
+				printf("probe_acpi_device() : could not read file %s : %s\n", fname, strerror(errno));
 			return -1;
 		}
-		close(fd_hid);
-	}
-	closedir(dir);*/
-	unsigned long long val;
-	int device_hid = -1;
-	int device_num = 0;
+		close(fd_hid); // Close the hid file
 
-	int i = 0;
-	while(*acpi_sbs_device_hid + i != "")
-	{
-		// linux/include/acpi/acpi_bus.h
-		for_each_acpi_dev_match(dev, acpi_sbs_device_hid[i], NULL, -1)
-		{
-			// Each match appears here
-		}
-		// dev is now set
-		if (!dev)
-		{
-			printf("probe_acpi_device() : could not find SBS controller : %s\n", strerror(ENODEV));
-			return -1;
-		}
-		
-		// Now we need to fetch _EC
-		// linux/drivers/acpi/utils.c
-		acpi_status status = AE_OK;
-		union acpi_object element;
-		struct acpi_buffer buffer = {0, NULL};
-		buffer.length = sizeof(union acpi_object);
-		buffer.pointer = &element;
 
-		status = acpi_evaluate_object(dev->handle, "_EC", NULL, &buffer);
-		if (ACPI_FAILURE(status))
+		// Check if the HID matches
+		int i = 0;
+		while(acpi_sbs_device_hid[i][0] != '\0')
 		{
-			// damn this is bad
-			printf("probe_acpi_device() : could not evaluate object %s\n", acpi_sbs_device_hid[i]);
-		}
-		else
-		{
-			// ok
-			if (element.type != ACPI_TYPE_INTEGER)
+			if (strcmp(hid, acpi_sbs_device_hid[i]) == 0)
 			{
-				printf("probe_acpi_device() : expected int, got a different type\n");
-			}
-			else
-			{
-				// found
+				// hid matches
+
+				// ---------------
+				// We need to fetch the full device ACPI path
+
+				snprintf(fname, 264, "%s/path", dir_e->d_name);
+				int fd_p = open(fname, O_RDONLY);
+				if (fd_hid < 0)
+				{
+					printf("probe_acpi_device() : could not open file %s : %s\n", fname, strerror(errno));
+					return -1;
+				}
+
+				char path[128];
+				ssize_t res = read(fd_p, path, 128);
+				if (res < 0)
+				{
+					printf("probe_acpi_device() : could not read file %s : %s\n", fname, strerror(errno));
+					return -1;
+				}
+				close(fd_p);
 				
-				printf("probe_acpi_device() : match %d\n", i);
-				printf("  device hid : %s\n, _EC : %u\n", acpi_sbs_device_hid[i], val);
-				device_hid = i;
-				device_num++;
+				if (call_ec_method(c, path, 1) < 0)
+				{
+					printf("probe_acpi_device() : could not execute _EC method for %s\n", hid);
+				}
+				else
+				{
+					// success
+					printf("found device !!");
+					printf("  hid : %s, offset: %.2x\n", acpi_sbs_device_hid[i], c->dev.offset);
+					device_num++;
+				}
+
 			}
 		}
-
-		// Need to put the device
-		acpi_dev_put(dev);
-
-		i++;
 	}
+
+	closedir(dir);
 	
-	if (device_num > 1)
-	{
-		printf("probe_acpi_device() : multiple devices found, aborting...\n");
-		return -1;
-	}
-
 	if (device_num == 0)
 	{
 		printf("probe_acpi_device() : no device found\n");
 		return -1;
 	}
-
-	// linux/drivers/acpi/sbshc.c
-	c->dev.offset = (val >> 8) & 0xff;
-	c->dev.hid_index = device_hid;
-	printf("found device !!");
-	printf("  hid : %s, offset: %.2x\n", acpi_sbs_device_hid[i], c->dev.offset);
+	else if (device_num > 1)
+	{
+		printf("probe_acpi_device() : error : more than 1 device found\n");
+		return -1;
+	}
 	return 1;
 }
 

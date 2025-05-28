@@ -15,7 +15,7 @@ enum ControllerDevice
 struct sbs_device
 {
 	int hid_index; // index of the hid device
-	__u8 offset;     // device address
+	unsigned char offset;     // device address
 };
 
 

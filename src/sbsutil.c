@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <errno.h>
 #include <unistd.h>
+#include <getopt.h>
 
 #include "src/structs.h"
 #include "src/preflight.h"
@@ -15,7 +16,7 @@ void print_help(char** argv)
 int main(int argc, char** argv)
 {
 	
-	struct args config{.verbose=0, .i2c=0, .file=NULL};
+	struct args config = {.verbose=0, .i2c=0, .file=NULL};
 
 	struct option opts[] = {
 		{"help", no_argument, NULL, 'h'},
@@ -25,7 +26,7 @@ int main(int argc, char** argv)
 	};
 	int opt = 0;
 
-	while(getopt_long(argc, argv, "hvf::"))
+	while(getopt_long(argc, argv, "hvf::", opts, NULL))
 	{
 		switch (opt)
 		{
@@ -53,7 +54,7 @@ int main(int argc, char** argv)
 	if (optind < argc)
 	{
 		for (int i = optind; i < argc; i++)
-			printf("Argument not recognised: %s\n", argv[index]);
+			printf("Argument not recognised: %s\n", argv[i]);
 		print_help(argv);
 		return 1;
 	}
@@ -67,7 +68,7 @@ int main(int argc, char** argv)
 		return 1;
 	}*/
 
-	int fd = device_open(config);
+	int fd = device_open(&config);
 	if (fd < 0)
 		return 1;
 	sbs_preflight(fd, BQ40);
