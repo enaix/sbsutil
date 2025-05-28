@@ -18,7 +18,7 @@ int main(int argc, char** argv)
 	
 	struct args config = {.verbose=0, .i2c=0, .file=NULL};
 
-	struct option opts[] = {
+	static struct option opts[] = {
 		{"help", no_argument, NULL, 'h'},
 		{"verbose", no_argument, NULL, 'v'},
 		{"file", optional_argument, NULL, 'f'},
@@ -26,7 +26,7 @@ int main(int argc, char** argv)
 	};
 	int opt = 0;
 
-	while(getopt_long(argc, argv, "hvf::", opts, NULL))
+	while((opt = getopt_long(argc, argv, "hvf::", opts, NULL)) != -1)
 	{
 		switch (opt)
 		{
@@ -45,7 +45,8 @@ int main(int argc, char** argv)
 				config.i2c = 1;
 				config.file = optarg; // pointer to argv, safe to assign
 				break;
-			default:
+			case '?':
+				printf("Argument not recognised: %s\n", argv[optind]);
 				print_help(argv);
 				return 1;
 		}

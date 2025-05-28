@@ -221,7 +221,8 @@ int probe_acpi_device(struct args* c)
 	// Check which devices are present on the system bus
 	DIR *dir;
 	struct dirent* dir_e;
-	dir = opendir("/sys/bus/acpi/devices");
+	static char d_path[] = "/sys/bus/acpi/devices";
+	dir = opendir(d_path);
 	if (!dir)
 	{
 		printf("probe_acpi_tables() : could not access /sys/bus/acpi/devices : %s\n", strerror(errno));
@@ -231,14 +232,20 @@ int probe_acpi_device(struct args* c)
 	int device_num = 0;
 	while ((dir_e = readdir(dir)) != NULL)
 	{
-		char fname[264];
-		snprintf(fname, 264, "%s/hid", dir_e->d_name); // path to hid file
+		if (strcmp(dir_e->d_name, ".") == 0 || strcmp(dir_e->d_name, "..") == 0)
+			continue;
+
+		char fname[288];
+		snprintf(fname, 288, "%s/%s/hid", d_path, dir_e->d_name); // path to hid file
 
 		int fd_hid = open(fname, O_RDONLY);
 		if (fd_hid < 0)
 		{
-			printf("probe_acpi_device() : could not open file %s : %s\n", fname, strerror(errno));
-			return -1;
+			if (errno == ENOENT)
+				continue; // No hid file
+
+			printf("probe_acpi_device() : could not open hid file %s : %s\n", fname, strerror(errno));
+			continue;
 		}
 
 		char hid[32]; // supposed to be 8
@@ -264,13 +271,19 @@ int probe_acpi_device(struct args* c)
 
 				// ---------------
 				// We need to fetch the full device ACPI path
+				if (c->verbose)
+				{
+					printf("probe_acpi_device() : device hid matches : %s\n", fname);
+				}
 
-				snprintf(fname, 264, "%s/path", dir_e->d_name);
+				snprintf(fname, 288, "%s/path", dir_e->d_name);
 				int fd_p = open(fname, O_RDONLY);
 				if (fd_hid < 0)
 				{
+					if (errno == ENOENT)
+						continue; // No path file
 					printf("probe_acpi_device() : could not open file %s : %s\n", fname, strerror(errno));
-					return -1;
+					continue;
 				}
 
 				char path[128];
@@ -295,6 +308,7 @@ int probe_acpi_device(struct args* c)
 				}
 
 			}
+			i++;
 		}
 	}
 
