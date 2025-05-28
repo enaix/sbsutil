@@ -12,7 +12,7 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <dirent.h>
-#include <unistd.h>
+#include <ctype.h>
 
 #include <linux/types.h>
 #include <sys/io.h>
@@ -48,7 +48,7 @@ enum acpi_smb_offset {
 
 
 // the device may appear with the following ids
-char* acpi_sbs_device_hid[] = {"ACPI0001", "ACPI0005", ""}; // "" is an end of array marker
+char* acpi_sbs_device_hid[] = {"ACPI0001", "ACPI0005", "PNP0C09", ""}; // "" is an end of array marker
 
 
 void check_device_capabilities(int fd)
@@ -118,6 +118,11 @@ int call_ec_method(struct args* c, const char* device, int use_acpi_call)
 		int fd = open(path, O_RDWR);
 		if (fd < 0)
 		{
+			if (errno == ENOENT)
+			{
+				printf("call_ec_method() : acpi_call kernel module is not loaded\n");
+				return -1;
+			}
 			printf("call_ec_method() : failed to open %s : %s\n", path, strerror(errno));
 			return -1;
 		}
@@ -212,6 +217,14 @@ int call_ec_method(struct args* c, const char* device, int use_acpi_call)
 	}
 }
 
+char* strtrim_end(char* str)
+{
+	int end = strlen(str) - 1;
+	while (end > 0 && isspace(str[end])) str[end] = '\0';
+
+	return str;
+}
+
 
 int probe_acpi_device(struct args* c)
 {
@@ -248,7 +261,7 @@ int probe_acpi_device(struct args* c)
 			continue;
 		}
 
-		char hid[32]; // supposed to be 8
+		char hid[32] = ""; // supposed to be 8
 		ssize_t res = read(fd_hid, hid, 32);
 		if (res < 0 || res == 32)
 		{
@@ -259,13 +272,15 @@ int probe_acpi_device(struct args* c)
 			return -1;
 		}
 		close(fd_hid); // Close the hid file
-
+		strtrim_end(hid);
 
 		// Check if the HID matches
 		int i = 0;
+
+		//printf("probe_acpi_device() : checking hid %s...\n", hid);
 		while(acpi_sbs_device_hid[i][0] != '\0')
 		{
-			if (strcmp(hid, acpi_sbs_device_hid[i]) == 0)
+			if (strncmp(hid, acpi_sbs_device_hid[i], strlen(acpi_sbs_device_hid[i])) == 0)
 			{
 				// hid matches
 
@@ -276,14 +291,14 @@ int probe_acpi_device(struct args* c)
 					printf("probe_acpi_device() : device hid matches : %s\n", fname);
 				}
 
-				snprintf(fname, 288, "%s/path", dir_e->d_name);
+				snprintf(fname, 288, "%s/%s/path", d_path, dir_e->d_name);
 				int fd_p = open(fname, O_RDONLY);
 				if (fd_hid < 0)
 				{
 					if (errno == ENOENT)
 						continue; // No path file
 					printf("probe_acpi_device() : could not open file %s : %s\n", fname, strerror(errno));
-					continue;
+					break;
 				}
 
 				char path[128];
