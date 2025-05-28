@@ -48,7 +48,7 @@ enum acpi_smb_offset {
 
 
 // the device may appear with the following ids
-char* acpi_sbs_device_hid[] = {"ACPI0001", "ACPI0005", "PNP0C09", ""}; // "" is an end of array marker
+char* acpi_sbs_device_hid[] = {"ACPI0001", "ACPI0005", "PNP0C09", "PNP0C0A", ""}; // "" is an end of array marker
 
 
 void check_device_capabilities(int fd)
@@ -115,6 +115,9 @@ int call_ec_method(struct args* c, const char* device, int use_acpi_call)
 		unsigned long long val;
 
 		snprintf(buf, sizeof(buf), "%s._EC", device);
+		if (c->verbose)
+			printf("call_ec_method() : acpi_call : %s\n", buf);
+
 		int fd = open(path, O_RDWR);
 		if (fd < 0)
 		{
@@ -301,7 +304,7 @@ int probe_acpi_device(struct args* c)
 					break;
 				}
 
-				char path[128];
+				char path[128] = "";
 				ssize_t res = read(fd_p, path, 128);
 				if (res < 0)
 				{
@@ -309,6 +312,8 @@ int probe_acpi_device(struct args* c)
 					return -1;
 				}
 				close(fd_p);
+
+				strtrim_end(path);
 				
 				if (call_ec_method(c, path, 1) < 0)
 				{
