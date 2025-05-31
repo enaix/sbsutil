@@ -1,3 +1,5 @@
+include kernel/Makefile
+
 C=gcc
 
 
@@ -48,18 +50,7 @@ all: release
 prerun:
 	$(shell mkdir -p build)
 
-.PHONY: kmod
-kmod:
-	$(MAKE) -C $(LINUX_DIR) M=$(MODULE_DIR) modules
 
-.PHONY: install
-install:
-	$(MAKE) -C $(LINUX_DIR) M=$(MODULE_DIR) modules_install
-
-.PHONY: load
-load:
-	/sbin/rmmod sbsctl
-	/sbin/insmod sbsctl.ko
 
 .PHONY: debug
 debug: CFLAGS += ${CFLAGS_DEBUG}
@@ -77,5 +68,6 @@ $(TARGETS): %: %.o
 
 .PHONY: clean
 clean:
+	kmod_clean
 	rm build/*
-	$(MAKE) -C $(LINUX_DIR) M=$(MODULE_DIR) clean
+
