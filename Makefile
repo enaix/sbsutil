@@ -22,7 +22,9 @@ endif
 # =============
 
 UNAME = $(shell uname -r)
-LINUX_HEADERS = /lib/modules/${UNAME}/build/include/
+LINUX_DIR = /lib/modules/${UNAME}/build
+LINUX_HEADERS = ${LINUX_DIR}/include/
+MODULE_DIR = $(shell pwd)/kernel
 
 ARCH_PATH = /lib/modules/${UNAME}/build/arch
 ARCH = $(shell bash -c "ls -1 /lib/modules/$(shell uname -r)/build/arch | grep -v Kconfig")
@@ -46,6 +48,19 @@ all: release
 prerun:
 	$(shell mkdir -p build)
 
+.PHONY: kmod
+kmod:
+	$(MAKE) -C $(LINUX_DIR) M=$(MODULE_DIR) modules
+
+.PHONY: install
+install:
+	$(MAKE) -C $(LINUX_DIR) M=$(MODULE_DIR) modules_install
+
+.PHONY: load
+load:
+	/sbin/rmmod sbsctl
+	/sbin/insmod sbsctl.ko
+
 .PHONY: debug
 debug: CFLAGS += ${CFLAGS_DEBUG}
 debug: prerun $(TARGETS)
@@ -63,3 +78,4 @@ $(TARGETS): %: %.o
 .PHONY: clean
 clean:
 	rm build/*
+	$(MAKE) -C $(LINUX_DIR) M=$(MODULE_DIR) clean

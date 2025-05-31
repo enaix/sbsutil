@@ -4,14 +4,22 @@
 #include <linux/acpi.h>
 #include <acpi/acpi.h>
 
+// Enable prints
+#define ENABLE_DEBUG
+
 
 MODULE_AUTHOR("enaix")
 MODULE_DESCRIPTION("Advanced Smart Battery System interface")
 MODULE_LICENSE("GPL")
 
+/*
+ * We are not declaring a device driver
+ *
+ 
 // the device may appear with the following ids
 char* acpi_sbs_device_hid[] = {"ACPI0001", "ACPI0005", ""}; // "" is an end of array marker
 
+MODULE_DEVICE_TABLE(acpi_sbs_device_hid);
 
 // Forward defs
 static int acpi_sbs_add(struct acpi_device *device);
@@ -26,6 +34,16 @@ static struct acpi_driver acpi_sbsctl_driver = {
 		.remove = acpi_sbs_remove,
 	},
 };
+*/
+
+
+struct sbs_device
+{
+	int hid_index;
+	unsigned char offset;
+};
+
+static sbs_device dev;
 
 
 int probe_acpi_device()
@@ -45,7 +63,7 @@ int probe_acpi_device()
 		// dev is now set
 		if (!dev)
 		{
-			printf("probe_acpi_device() : could not find SBS controller : %s\n", strerror(ENODEV));
+			printk(KERN_WARNING "probe_acpi_device() : could not find SBS controller : %s\n", strerror(ENODEV));
 			return -1;
 		}
 
@@ -61,21 +79,21 @@ int probe_acpi_device()
 		if (ACPI_FAILURE(status))
 		{
 			// damn this is bad
-			printf("probe_acpi_device() : could not evaluate object %s\n", acpi_sbs_device_hid[i]);
+			printk(KERN_WARNING "probe_acpi_device() : could not evaluate object %s\n", acpi_sbs_device_hid[i]);
 		}
 		else
 		{
 			// ok
 			if (element.type != ACPI_TYPE_INTEGER)
 			{
-				printf("probe_acpi_device() : expected int, got a different type\n");
+				printk(KERN_WARNING "probe_acpi_device() : expected int, got a different type\n");
 			}
 			else
 			{
 				// found
 
-				printf("probe_acpi_device() : match %d\n", i);
-				printf("  device hid : %s\n, _EC : %u\n", acpi_sbs_device_hid[i], val);
+				printk(KERN_INFO "probe_acpi_device() : match %d\n", i);
+				printk(KERN_INFO "  device hid : %s\n, _EC : %u\n", acpi_sbs_device_hid[i], val);
 				device_hid = i;
 				device_num++;
 			}
@@ -89,20 +107,39 @@ int probe_acpi_device()
 
 	if (device_num > 1)
 	{
-		printf("probe_acpi_device() : multiple devices found, aborting...\n");
+		printk(KERN_WARNING "probe_acpi_device() : multiple devices found, aborting...\n");
 		return -1;
 	}
 
 	if (device_num == 0)
 	{
-		printf("probe_acpi_device() : no device found\n");
+		printk(KERN_WARNING "probe_acpi_device() : no device found\n");
 		return -1;
 	}
 
 	// linux/drivers/acpi/sbshc.c
-	c->dev.offset = (val >> 8) & 0xff;
-	c->dev.hid_index = device_hid;
-	printf("found device !!");
-	printf("  hid : %s, offset: %.2x\n", acpi_sbs_device_hid[i], c->dev.offset);
+	dev.offset = (val >> 8) & 0xff;
+	dev.hid_index = device_hid;
+	printk(KERN_INFO "found device !!");
+	printk(KERN_INFO "  hid : %s, offset: %.2x\n", acpi_sbs_device_hid[i], c->dev.offset);
 	return 1;
 }
+
+static int __init init_sbs_interface(void)
+{
+	if (probe_acpi_device() < 0)
+	{
+		// ignore
+	}
+	return 0;
+}
+
+
+static void __exit unload_sbs_interface(void)
+{
+	// nothing to do
+}
+
+module_init(init_sbs_interface);
+module_exit(unload_sbs_interface);
+
