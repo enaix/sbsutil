@@ -72,13 +72,15 @@ static int probe_acpi_device(void)
 
 			// Now we need to fetch _EC
 			// linux/drivers/acpi/utils.c
-			acpi_status status = AE_OK;
+			/*acpi_status status = AE_OK;
 			union acpi_object element;
 			struct acpi_buffer buffer = {0, NULL};
 			buffer.length = sizeof(union acpi_object);
 			buffer.pointer = &element;
 
 			status = acpi_evaluate_object(acpi_dev->handle, "_EC", NULL, &buffer);
+			*/
+			acpi_status status = acpi_evaluate_integer(acpi_dev->handle, "_EC", NULL, &val);
 			if (ACPI_FAILURE(status))
 			{
 				// damn this is bad
@@ -87,19 +89,19 @@ static int probe_acpi_device(void)
 			else
 			{
 				// ok
-				if (element.type != ACPI_TYPE_INTEGER)
+				/*if (element.type != ACPI_TYPE_INTEGER)
 				{
 					printk(KERN_WARNING "probe_acpi_device() : expected int, got a different type\n");
 				}
 				else
-				{
+				{*/
 					// found
 
 					printk(KERN_INFO "probe_acpi_device() : match %d\n", i);
 					printk(KERN_INFO "  device hid : %s\n, _EC : %u\n", acpi_sbs_device_hid[i], val);
 					device_hid = i;
 					device_num++;
-				}
+				//}
 			}
 		}
 
