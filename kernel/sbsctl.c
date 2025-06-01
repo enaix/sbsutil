@@ -15,12 +15,48 @@ MODULE_DESCRIPTION("Advanced Smart Battery System interface");
 MODULE_LICENSE("GPL");
 
 // the device may appear with the following ids
-// char* acpi_sbs_device_hid[] = {"ACPI0001", "ACPI0005", "PNP0C09", "PNP0C0A", ""}; // "" is an end of array marker
+char* acpi_sbs_device_hid[] = {"ACPI0001", "ACPI0005", "PNP0C09", "PNP0C0A", ""}; // "" is an end of array marker
 // not needed: ec.h already does this for us
 
 
 // EC declarations
 // ===============
+
+
+/* linux/drivers/acpi/internal.h
+ * ~~ Is not supposed to be used in drivers, but this is only used for debugging purposes ~~
+ */
+
+enum acpi_ec_event_state {
+	EC_EVENT_READY = 0,	/* Event work can be submitted */
+	EC_EVENT_IN_PROGRESS,	/* Event work is pending or being processed */
+	EC_EVENT_COMPLETE,	/* Event work processing has completed */
+};
+
+struct acpi_ec {
+	acpi_handle handle;
+	int gpe;
+	int irq;
+	unsigned long command_addr;
+	unsigned long data_addr;
+	bool global_lock;
+	unsigned long flags;
+	unsigned long reference_count;
+	struct mutex mutex;
+	wait_queue_head_t wait;
+	struct list_head list;
+	struct transaction *curr;
+	spinlock_t lock;
+	struct work_struct work;
+	unsigned long timestamp;
+	enum acpi_ec_event_state event_state;
+	unsigned int events_to_process;
+	unsigned int events_in_progress;
+	unsigned int queries_in_progress;
+	bool busy_polling;
+	unsigned int polling_guard;
+};
+
 
 extern struct acpi_ec* first_ec;
 
@@ -43,7 +79,7 @@ static int find_ec(void)
 	// We suppose that the ec.h driver is loaded
 	if (first_ec == NULL)
 	{
-		printk(KERN_ERROR "sbsctl : find_ec() : embedded controller not loaded by linux/drivers/acpi/ec.h\n");
+		printk(KERN_ERR "sbsctl : find_ec() : embedded controller not loaded by linux/drivers/acpi/ec.h\n");
 		return -1;
 	}
 
