@@ -15,30 +15,18 @@ MODULE_DESCRIPTION("Advanced Smart Battery System interface");
 MODULE_LICENSE("GPL");
 
 // the device may appear with the following ids
-char* acpi_sbs_device_hid[] = {"ACPI0001", "ACPI0005", "PNP0C09", "PNP0C0A", ""}; // "" is an end of array marker
+// char* acpi_sbs_device_hid[] = {"ACPI0001", "ACPI0005", "PNP0C09", "PNP0C0A", ""}; // "" is an end of array marker
+// not needed: ec.h already does this for us
 
 
-/*
- * We are not declaring a device driver
- *
+// EC declarations
+// ===============
 
-MODULE_DEVICE_TABLE(acpi_sbs_device_hid);
+extern struct acpi_ec* first_ec;
 
-// Forward defs
-static int acpi_sbs_add(struct acpi_device *device);
-static void acpi_sbs_remove(struct acpi_device *device);
 
-static struct acpi_driver acpi_sbsctl_driver = {
-	.name = "sbsctl_driver",
-	.class = ACPI_SMB_HC_CLASS,
-	.ids = acpi_sbs_device_hid,
-	.ops = {
-		.add = acpi_sbs_add,
-		.remove = acpi_sbs_remove,
-	},
-};
-*/
 
+// ==============
 
 struct sbs_device
 {
@@ -47,6 +35,23 @@ struct sbs_device
 };
 
 static struct sbs_device dev;
+
+
+
+static int find_ec(void)
+{
+	// We suppose that the ec.h driver is loaded
+	if (first_ec == NULL)
+	{
+		printk(KERN_ERROR "sbsctl : find_ec() : embedded controller not loaded by linux/drivers/acpi/ec.h\n");
+		return -1;
+	}
+
+	dev.offset = 0; // Do not set offset
+	printk(KERN_INFO "sbsctl : find_ec() : ec found !!   cmd addr: 0x%lx, data addr: 0x%lx\n", first_ec->command_addr, first_ec->data_addr);
+	return 1;
+}
+
 
 
 static int probe_acpi_device(void)
@@ -133,6 +138,9 @@ static int probe_acpi_device(void)
 
 static int __init init_sbs_interface(void)
 {
+	// Print debug info about ec
+	find_ec(); // ignore status
+
 	if (probe_acpi_device() < 0)
 	{
 		// ignore
