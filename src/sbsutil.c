@@ -9,8 +9,18 @@
 
 void print_help(char** argv)
 {
-	printf("%s: usage :\n", argv[0]);
-	printf("%s path-to-i2c-device\n", argv[0]);
+	printf(
+			"Usage: sbsutil [OPTION]... [-f|--file=FILE]\n"
+			"Communicate with the Smart Battery System IC.\n\n"
+			"Performs non-destructive checks by default.\n"
+			"If the FILE is not specified, communicates over the ACPI bus using the sbsctl module.\n"
+			"NOTE: i2c commands can potentially cause harm when sent to a wrong device!\n\n"
+			"  -h, --help     \tprint this help message and exit\n"
+			"  -v, --verbose  \tprint out all data\n"
+			"  -f, --file=FILE\tcommunicate over i2c device located in FILE\n\n"
+			"Examples:\n"
+			"  sbsutil              \tRun preflight checks without executing ManufacturerAccess commands. Requires loaded sbsctl kernel module to perform ACPI calls.\n"
+			"  sbsutil -f /dev/i2c-2\tRun preflight checks over the second i2c device.\n");
 }
 
 int main(int argc, char** argv)

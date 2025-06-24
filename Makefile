@@ -2,7 +2,6 @@ include kernel/Makefile
 
 C=gcc
 
-
 # Compilation options
 # ===================
 
@@ -43,6 +42,8 @@ LINK =
 ifeq (${ENABLE_I2C}, "1")
 	LINK += -li2c
 endif
+
+.DEFAULT_GOAL := release
 
 .PHONY: all
 all: release
