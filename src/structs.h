@@ -6,9 +6,18 @@
 // Application structures
 // ======================
 
+
+
+static char* ControllerNames[] = {
+	"bq40", // 0
+	"auto", // 1
+	NULL
+};
+
 enum ControllerDevice
 {
-	BQ40,
+	BQ40, // 0
+	AUTO, // 1
 };
 
 
@@ -26,6 +35,7 @@ struct args
 	char* file;  // i2c device path
 
 	struct sbs_device dev;
+	enum ControllerDevice chip; // may be AUTO
 };
 
 

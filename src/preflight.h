@@ -179,7 +179,7 @@ void sbs_preflight_check_status(int fd)
 	printf("      Error code: [%s]\n", BatteryErrorName[status.error]);
 }
 
-void sbs_preflight(int fd, enum ControllerDevice device)
+void sbs_preflight(int fd)
 {
 	printf("PREFLIGHT : \n");
 	sbs_preflight_check_sanity(fd);
