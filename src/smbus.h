@@ -336,7 +336,7 @@ int probe_acpi_device(struct args* c)
 	
 	if (device_num == 0)
 	{
-		printf("probe_acpi_device() : no device found\n");
+		printf("probe_acpi_device() : no acpi device found\n");
 		return -1;
 	}
 	else if (device_num > 1)

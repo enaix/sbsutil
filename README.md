@@ -15,19 +15,23 @@ To build the experimental kernel module, run `make kmod` to build, `sudo make in
 ## Usage
 
 ```
-Usage: sbsutil [OPTION]... [-f|--file=FILE]
+Usage: sbsutil [OPTION]... [-f|--file=FILE] [COMMAND]
 Communicate with the Smart Battery System IC.
 
-Performs non-destructive checks by default.
+Runs preflight checks if COMMAND is not given.
 If the FILE is not specified, communicates over the ACPI bus using the sbsctl module.
 NOTE: i2c commands can potentially cause harm when sent to a wrong device!
 
   -h, --help     	print this help message and exit
   -v, --verbose  	print out all data
   -f, --file=FILE	communicate over i2c device located in FILE
+  -c, --chip=CHIP	override SBS controller model. CHIP is one of: [bq40,auto]
+
+Commands:
+  preflight      	Run non-destructive checks using standard SBS commands
 
 Examples:
-  sbsutil              	Run preflight checks without executing ManufacturerAccess commands. Requires loaded sbsctl kernel module to perform ACPI calls.
+  sbsutil preflight    	Run preflight checks without executing ManufacturerAccess commands. Requires loaded sbsctl kernel module to perform ACPI calls.
   sbsutil -f /dev/i2c-2	Run preflight checks over the second i2c device.
 ```
 
