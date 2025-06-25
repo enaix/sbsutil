@@ -9,7 +9,7 @@
 #include "src/sbs.h"
 
 
-void sbs_preflight_check_chemid(int fd, enum ControllerDevice device)
+void sbs_status_get_chemid(int fd, enum ControllerDevice device)
 {
 	struct chem_id chem;
 	int res;
@@ -19,17 +19,19 @@ void sbs_preflight_check_chemid(int fd, enum ControllerDevice device)
 		case BQ40:
 			res = bq40_get_chemid(&chem, fd);
 			break;
+		default:
+			quit(fd, 1);
 	}
 	if (res != 0)
 	{
-		printf("sbs_preflight_check_chemid() : PREFLIGHT ERROR\n");
+		printf("sbs_status_get_chemid() : PREFLIGHT ERROR\n");
 		quit(fd, 1);
 	}
 
 	printf("    ChemID : %.4x\n", chem.id);
 }
 
-void sbs_preflight_check_devicetype(int fd, enum ControllerDevice device)
+void sbs_status_get_devicetype(int fd, enum ControllerDevice device)
 {
 	struct device_type dev;
 	int res;
@@ -39,17 +41,19 @@ void sbs_preflight_check_devicetype(int fd, enum ControllerDevice device)
 		case BQ40:
 			res = bq40_get_devicetype(&dev, fd);
 			break;
+		default:
+			quit(fd, 1);
 	}
 	if (res != 0)
 	{
-		printf("sbs_preflight_check_devicetype() : PREFLIGHT ERROR\n");
+		printf("sbs_status_get_devicetype() : PREFLIGHT ERROR\n");
 		quit(fd, 1);
 	}
 
 	printf("    DeviceType : %.4x\n", dev.type);
 }
 
-void sbs_preflight_check_firmware_v(int fd, enum ControllerDevice device)
+void sbs_status_get_fw_v(int fd, enum ControllerDevice device)
 {
 	struct firmware_version fw;
 	int res;
@@ -59,17 +63,19 @@ void sbs_preflight_check_firmware_v(int fd, enum ControllerDevice device)
 		case BQ40:
 			res = bq40_get_firmware_v(&fw, fd);
 			break;
+		default:
+			quit(fd, 1);
 	}
 	if (res != 0)
 	{
-		printf("sbs_preflight_check_firmware_v() : PREFLIGHT ERROR\n");
+		printf("sbs_status_get_fw_v() : PREFLIGHT ERROR\n");
 		quit(fd, 1);
 	}
 
 	printf("    FirmwareVersion : %s\n", fw.fw);
 }
 
-void sbs_preflight_check_operation_status(int fd, enum ControllerDevice device)
+void sbs_status_get_op_status(int fd, enum ControllerDevice device)
 {
 	struct operation_status status;
 	int res;
@@ -80,11 +86,13 @@ void sbs_preflight_check_operation_status(int fd, enum ControllerDevice device)
 		case BQ40:
 			res = bq40_get_operation_status(&status, fd);
 			break;
+		default:
+			quit(fd, 1);
 	}
 
 	if (res != 0)
 	{
-		printf("sbs_preflight_check_operation_status() : PREFLIGHT ERROR\n");
+		printf("sbs_status_get_op_status() : PREFLIGHT ERROR\n");
 		quit(fd, 1);
 	}
 
@@ -128,6 +136,11 @@ void sbs_preflight_check_operation_status(int fd, enum ControllerDevice device)
 	}
 	printf("\n============\n");
 }
+
+
+// SBS-COMPLIANT PREFLIGHT COMMANDS
+// ================================
+
 
 void sbs_preflight_check_sanity(int fd)
 {
@@ -184,9 +197,20 @@ void sbs_preflight(int fd)
 	printf("PREFLIGHT : \n");
 	sbs_preflight_check_sanity(fd);
 	sbs_preflight_check_status(fd);
-	//sbs_preflight_check_chemid(fd, device);
-	//sbs_preflight_check_devicetype(fd, device);
-	//sbs_preflight_check_firmware_v(fd, device);
-	//sbs_preflight_check_operation_status(fd, device);
+}
+
+void device_fetch_status(int fd, struct args* config)
+{
+	printf("DEVICE STATUS : \n");
+	if (config->chip == AUTO)
+	{
+		printf("AUTO chip model fetch is not supported yet. Please specify the CHIP argument\n");
+		quit(fd, 1);
+	}
+
+	sbs_status_get_chemid(fd, config->chip);
+	sbs_status_get_devicetype(fd, config->chip);
+	sbs_status_get_fw_v(fd, config->chip);
+	sbs_status_get_op_status(fd, config->chip);
 }
 #endif

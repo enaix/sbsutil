@@ -35,7 +35,8 @@ void print_help()
 			"  -f, --file=FILE\tcommunicate over i2c device located in FILE\n"
 			"  -c, --chip=CHIP\toverride SBS controller model. CHIP is one of: [%s]\n\n"
 			"Commands:\n"
-			"  preflight      \tRun non-destructive checks using standard SBS commands\n\n"
+			"  preflight      \tRun non-destructive checks using standard SBS commands\n"
+			"  status         \tFetch device-specific status registers\n\n"
 			"Examples:\n"
 			"  sbsutil preflight    \tRun preflight checks without executing ManufacturerAccess commands. Requires loaded sbsctl kernel module to perform ACPI calls.\n"
 			"  sbsutil -f /dev/i2c-2\tRun preflight checks over the second i2c device.\n", chip_names);
@@ -48,6 +49,10 @@ int command_exec(int fd, const char* cmd, struct args* config)
 	{
 		// Default: run preflight checks
 		sbs_preflight(fd);
+	}
+	else if (strcmp(cmd, "status") == 0)
+	{
+		device_fetch_status(fd, config);
 	}
 	else
 	{
