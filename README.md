@@ -41,3 +41,26 @@ Right now, this utility attempts to dump battery information, early WIP
 ## Supported chips
 
 - bq40zxy family : [datasheet](https://www.ti.com/lit/ds/symlink/bq40z50.pdf), [protocol](https://www.ti.com/lit/ug/sluua43a/sluua43a.pdf)
+
+## Connect using ch341 programmer
+
+If the sbs device is not present on the i2c bus and you cannot access the EC chip, you may use a generic ch341 programmer for communication. [ch341-i2c-spi-gpio](https://github.com/frank-zago/ch341-i2c-spi-gpio) kernel driver exposes i2c pins as a generic `/dev/i2c-*` device, so it can be used natively by the sbsutil. A generic `ch341 pro` programmer has the following pins exposed:
+
+```
+[top view]
+   (USB)
+
+ .  ...  .
+ +---+---+
+>|SDA|   |
+ +---+---+
+>|SCL|   |
+ +---+---+
+>|GND|   |
+ +---+---+
+ |3V3|   |
+ +---+---+
+ +======||
+        ||
+ (END)  OO
+```
