@@ -5,7 +5,8 @@ C=gcc
 # Compilation options
 # ===================
 
-ENABLE_I2C ?= 1 # i2c is enabled by default
+# i2c is enabled by default
+ENABLE_I2C ?= 1
 
 CFLAGS = -Wall  #-Werror=return-type
 # Sanitizer disabled by default
@@ -14,7 +15,7 @@ CFLAGS_DEBUG = -g -DENABLE_DEBUG -O2
 CFLAGS_RELEASE = -O3 -DNDEBUG
 
 
-ifeq (${ENABLE_I2C}, "1")
+ifeq (${ENABLE_I2C}, 1)
 	CFLAGS += -DSBS_ENABLE_I2C
 endif
 
@@ -39,7 +40,7 @@ TARGETS = sbsutil
 INCLUDE = -I.
 LINK =
 
-ifeq (${ENABLE_I2C}, "1")
+ifeq (${ENABLE_I2C}, 1)
 	LINK += -li2c
 endif
 
@@ -68,7 +69,6 @@ $(TARGETS): %: %.o
 	${C} -c ${CFLAGS} $< ${INCLUDE} -o build/$(notdir $@)
 
 .PHONY: clean
-clean:
-	kmod_clean
+clean: kmod_clean
 	rm build/*
 
