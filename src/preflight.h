@@ -153,6 +153,49 @@ void sbs_status_get_op_status(int fd, enum ControllerDevice device)
 	printf("\n============\n");
 }
 
+void sbs_pf_logger(const char* desc)
+{
+	printf("      [!] %s\n", desc);
+}
+
+void sbs_status_get_pf_status(int fd, enum ControllerDevice device)
+{
+	int res;
+	int ok;
+
+	printf("\n============\n");
+	printf("\n    Permanent Failure status :\n      ");
+	
+	switch (device)
+	{
+		case BQ40:
+		{
+			struct bq40_pf_status status;
+			res = bq40_get_pf_status(&status, &ok, fd);
+			if (res != 0)
+				break;
+
+			if (!ok)
+				bq40_log_pf_status(&status, sbs_pf_logger);
+			break;
+		}
+		default:
+			quit(fd, 1);
+	}
+
+	if (res != 0)
+	{
+		printf("sbs_status_get_pf_status() : PREFLIGHT ERROR\n");
+		quit(fd, 1);
+	}
+
+	if (ok)
+	{
+		printf("      No error detected\n");
+	}
+	printf("\n============\n");
+}
+
 
 // SBS-COMPLIANT PREFLIGHT COMMANDS
 // ================================
@@ -228,5 +271,6 @@ void device_fetch_status(int fd, struct args* config)
 	sbs_status_get_devicetype(fd, config->chip);
 	sbs_status_get_fw_v(fd, config->chip);
 	sbs_status_get_op_status(fd, config->chip);
+	sbs_status_get_pf_status(fd, config->chip);
 }
 #endif

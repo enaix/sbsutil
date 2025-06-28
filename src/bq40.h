@@ -142,4 +142,147 @@ int bq40_get_operation_status(struct operation_status* status, int fd)
 	return 0;
 }
 
+
+struct bq40_pf_status
+{
+	int thermistors_fail[4]; // TS1-TS4 fail
+	int data_flash_wearout;  // DFW
+	int open_cell_conn_fail; // OPNCELL
+	int flash_checksum_fail; // IFC
+	int ptc_fail;
+	int second_lvl_protec_fail;
+	int afe_conn_fail;
+	int afe_register_fail;
+	int chem_fuse_fail;
+	int dis_fet_fail;
+	int chg_fet_fail;
+	int vol_imbal_act_fail;
+	int vol_imbal_rest_fail;
+	int cap_degradation;
+	int impedance_fail;
+	int cell_bal_fail;
+	int qmax_imbal_fail;
+	int overtemp_fet_fail;
+
+	int overtemp_cell_fail;
+	int overcurr_discharge;
+	int overcurr_charge;
+	int overvolt_fail;
+	int undervolt_fail;
+};
+
+
+void bq40_log_pf_status(const struct bq40_pf_status* status, void (*logger)(const char*))
+{
+	for (int i = 0; i < 4; i++)
+	{
+		if (status->thermistors_fail[i])
+		{
+			char desc[32];
+			snprintf(desc, 32, "Open Thermistor-TS%d Failure", i+1);
+			logger(desc);
+		}
+	}
+	if (status->data_flash_wearout)
+		logger("Data Flash Wearout Failure");
+	if (status->open_cell_conn_fail)
+		logger("Open Cell Tab Connection Failure");
+	if (status->flash_checksum_fail)
+		logger("Instruction Flash Checksum Failure");
+	if (status->ptc_fail)
+		logger("PTC (Positive Temperature Coefficient) resistor Failure");
+	if (status->second_lvl_protec_fail)
+		logger("Second Level Protector Failure");
+	if (status->afe_conn_fail)
+		logger("AFE (Analog Front End) Communication Failure");
+	if (status->afe_register_fail)
+		logger("AFE (Analog Front End) Register Failure");
+	if (status->chem_fuse_fail)
+		logger("Chemical Fuse Failure");
+	if (status->dis_fet_fail)
+		logger("Discharge FET Failure");
+	if (status->chg_fet_fail)
+		logger("Charge FET Failure");
+	if (status->vol_imbal_act_fail)
+		logger("Voltage Imbalance while Pack is Active Failure");
+	if (status->vol_imbal_rest_fail)
+		logger("Voltage Imbalance while Pack At Rest Failure");
+	if (status->cap_degradation)
+		logger("Capacity Degradation Failure");
+	if (status->impedance_fail)
+		logger("Impedance Failure");
+	if (status->cell_bal_fail)
+		logger("Cell Balancing Failure");
+	if (status->qmax_imbal_fail)
+		logger("QMax Imbalance Failure");
+	if (status->overtemp_fet_fail)
+		logger("Safety Overtemperature FET Failure");
+
+	if (status->overtemp_cell_fail)
+		logger("Safety Overtemperature Cell Failure");
+	if (status->overcurr_discharge)
+		logger("Safety Overcurrent in Discharge");
+	if (status->overcurr_charge)
+		logger("Safety Overcurrent in Charge");
+	if (status->overvolt_fail)
+		logger("Safety Cell Overvoltage Failure");
+	if (status->undervolt_fail)
+		logger("Safety Cell Overvoltage Failure");
+}
+
+
+int bq40_get_pf_status(struct bq40_pf_status* status, int* ok, int fd)
+{
+	__u8 command[2] = {0x53, 0x00};
+	__u8 data[32] = {};
+	if (sbs_exec_block_command(0x44, command, data, 2, fd) != 0)
+	{
+		printf("bq40_get_operation_status() : could not get OperationStatus\n");
+		return 1;
+	}
+
+#ifdef ENABLE_DEBUG
+	printf("    block -> ");
+	smbus_print_block(data);
+#endif
+
+	if (sbs_block_check_mac(command, data, 2) != 0)
+	{
+		printf("bq40_get_pf_status() : bad MAC command\n");
+		return 1;
+	}
+
+	//uint32_t flags = *(uint32_t*)(data + 2); // easier to do flags & (1 << bits);
+	uint32_t flags = smbus_block_LE_to_ui32(data + 2, 4);
+	for (int bit = 28; bit <= 31; bit++)
+		status->thermistors_fail[bit - 28] = (flags >> bit) & 1;
+
+	status->data_flash_wearout = (flags >> 26) & 1;
+	status->open_cell_conn_fail = (flags >> 25) & 1;
+	status->flash_checksum_fail = (flags >> 24) & 1;
+	status->ptc_fail = (flags >> 23) & 1;
+	status->second_lvl_protec_fail = (flags >> 22) & 1;
+	status->afe_conn_fail = (flags >> 21) & 1;
+	status->afe_register_fail = (flags >> 20) & 1;
+	status->chem_fuse_fail = (flags >> 19) & 1;
+	status->dis_fet_fail = (flags >> 17) & 1;
+	status->chg_fet_fail = (flags >> 16) & 1;
+	status->vol_imbal_act_fail = (flags >> 12) & 1;
+	status->vol_imbal_rest_fail = (flags >> 11) & 1;
+	status->cap_degradation = (flags >> 10) & 1;
+	status->impedance_fail = (flags >> 9) & 1;
+	status->cell_bal_fail = (flags >> 8) & 1;
+	status->qmax_imbal_fail = (flags >> 7) & 1;
+	status->overtemp_fet_fail = (flags >> 6) & 1;
+
+	status->overtemp_cell_fail = (flags >> 4) & 1;
+	status->overcurr_discharge = (flags >> 3) & 1;
+	status->overcurr_charge = (flags >> 2) & 1;
+	status->overvolt_fail = (flags >> 1) & 1;
+	status->undervolt_fail = flags & 1;
+
+	*ok = (flags == 0);
+	return 0;
+}
+
 #endif
