@@ -429,7 +429,7 @@ __s32 sbs_read_word(int fd, __u8 command)
 __s32 sbs_read_block(int fd, __u8 command, __u8* result)
 {
 	#ifdef SBS_ENABLE_I2C
-	__s32 res = i2c_smbus_read_block_data(fd, command, result);
+	__s32 res = i2c_smbus_read_i2c_block_data(fd, command, 32, result);
 	if (res < 0)
 	{
 		int err = (int)(-res);
@@ -448,7 +448,7 @@ __s32 sbs_read_block(int fd, __u8 command, __u8* result)
 }
 
 
-int sbs_exec_block_command(__u8 command, const __u8* data, __u8* result, int length, int fd)
+int sbs_exec_block_command(__u8 command, const __u8* data, __u8* result, __u8 length, int fd)
 {
 	#ifdef SBS_ENABLE_I2C
 	__s32 res = i2c_smbus_write_block_data(fd, command, length, data);
@@ -459,13 +459,19 @@ int sbs_exec_block_command(__u8 command, const __u8* data, __u8* result, int len
 		return 1;
 	}
 
-	res = i2c_smbus_read_block_data(fd, command, result);
+	//usleep(50*1000);
+
+	res = i2c_smbus_read_i2c_block_data(fd, command, 32, result);
 	if (res < 0)
 	{
 		printf("sbs_exec_block_command() : could not read command result\n");
 		sbs_log_error(res);
 		return 1;
 	}
+	__u8 len = result[0];
+	memmove(result, result + 1, 31);
+	printf("sbs_exec_block_command() : read %d bytes\n", len);
+	// We need to return the block size
 
 	return 0;
 	#else

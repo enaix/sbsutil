@@ -127,6 +127,7 @@ struct operation_status
 	enum ShutdownMode { SHUTDN_NONE, SHUTDN_MANUAL, SHUTDN_LOW_VOLTAGE, SHUTDN_EMERGENCY, } shutdown;
 	enum PermanentFailure { PF_NONE, PF_FAIL } pf;
 	enum FuseStatus { FUSE_NONE, FUSE_DEPLOY } fuse;
+	enum SecurityMode { ACCESS_FULL, ACCESS_UNSEALED, ACCESS_SEALED, ACCESS_ERR } access;
 };
 
 #endif

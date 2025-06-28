@@ -122,7 +122,8 @@ int bq40_get_operation_status(struct operation_status* status, int fd)
 		return 1;
 	}
 
-	uint32_t flags = *(uint32_t*)data; // easier to do flags & (1 << bits);
+	//uint32_t flags = *(uint32_t*)(data + 2); // easier to do flags & (1 << bits);
+	uint32_t flags = smbus_block_LE_to_ui32(data + 2, 4);
 	status->shutdown = ( ((flags >> 29) & 1) == 1 ? SHUTDN_EMERGENCY :
 			( ((flags >> 10) & 1) == 1 ? SHUTDN_LOW_VOLTAGE :
 			 ( ((flags >> 16) & 1) == 1 ? SHUTDN_MANUAL :
@@ -130,6 +131,14 @@ int bq40_get_operation_status(struct operation_status* status, int fd)
 
 	status->pf = ( (flags >> 12) & 1) == 1 ? PF_FAIL : PF_NONE;
 	status->fuse = ( (flags >> 5) & 1) == 1 ? FUSE_DEPLOY : FUSE_NONE;
+	int bit9 = (flags >> 9) & 1, bit8 = (flags >> 8) & 1;
+	status->access = (bit9 & bit8) ? ACCESS_SEALED : (bit9 ? ACCESS_UNSEALED : (bit8 ? ACCESS_FULL : ACCESS_ERR));
+
+	if (status->access == ACCESS_ERR)
+	{
+		printf("bq40_get_operation_status() : bad status code\n");
+		return 1;
+	}
 	return 0;
 }
 

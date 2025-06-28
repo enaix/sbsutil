@@ -77,7 +77,7 @@ int sbs_get_device_metadata(struct device_metadata* meta, int fd)
 	printf("    word [ser#] -> %.4x\n", res);
 #endif
 
-	__u8 data[32] = {};
+	__u8 data[33] = {}; // Reserve one for the \0
 	res = sbs_read_block(fd, 0x20, data);
 	if (res < 0)
 	{
@@ -85,7 +85,7 @@ int sbs_get_device_metadata(struct device_metadata* meta, int fd)
 		return 1;
 	}
 
-	memcpy(meta->vendor, (char*)data, 32);
+	memcpy(meta->vendor, (char*)data, 33);
 
 #ifdef ENABLE_DEBUG
 	printf("    block [vend] ->");
@@ -99,7 +99,7 @@ int sbs_get_device_metadata(struct device_metadata* meta, int fd)
 		return 1;
 	}
 
-	memcpy(meta->device, (char*)data, 32);
+	memcpy(meta->device, (char*)data, 33);
 
 #ifdef ENABLE_DEBUG
 	printf("    block [dev ] ->");
@@ -113,7 +113,7 @@ int sbs_get_device_metadata(struct device_metadata* meta, int fd)
 		return 1;
 	}
 
-	memcpy(meta->chemistry, (char*)data, 32);
+	memcpy(meta->chemistry, (char*)data, 33);
 
 #ifdef ENABLE_DEBUG
 	printf("    block [chem] ->");

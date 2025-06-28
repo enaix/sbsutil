@@ -134,6 +134,22 @@ void sbs_status_get_op_status(int fd, enum ControllerDevice device)
 			printf("Fuse disarmed\n");
 			break;
 	}
+	printf("      Access: ");
+	switch(status.access)
+	{
+		case ACCESS_FULL:
+			printf("[!] FULL\n");
+			break;
+		case ACCESS_UNSEALED:
+			printf("[#] Unsealed\n");
+			break;
+		case ACCESS_SEALED:
+			printf("[$] Sealed\n");
+			break;
+		default:
+			printf("ERR\n");
+			break;
+	}
 	printf("\n============\n");
 }
 
