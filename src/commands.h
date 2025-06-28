@@ -10,6 +10,12 @@
 #include "src/bq40.h"
 #include "src/sbs.h"
 
+#include <signal.h>
+
+
+uint32_t _bruteforce_key;
+int _bruteforce_fd;
+
 
 void device_unlock_priviledges(int fd, struct args* config, const char* key)
 {
@@ -73,6 +79,137 @@ void device_unlock_priviledges(int fd, struct args* config, const char* key)
 		}
 		default:
 			quit(fd, 1);
+	}
+}
+
+
+void bruteforce_graceful_shutdown(int fd)
+{
+	printf("Iteration stopped at %.4x\n", _bruteforce_key);
+	quit(fd, 1);
+}
+
+
+void bruteforce_sigterm(int signo)
+{
+	bruteforce_graceful_shutdown(_bruteforce_fd);
+}
+
+
+void device_bruteforce(int fd, struct args* config, const char* key_start, const char* key_end)
+{
+	if (config->chip == AUTO)
+	{
+		printf("AUTO chip model fetch is not supported yet. Please specify the CHIP argument\n");
+		quit(fd, 1);
+	}
+
+	if (!key_start)
+		key_start = "00000000";
+	if (!key_end)
+		key_end = "ffffffff";
+
+	size_t len_s = strlen(key_start), len_r = strlen(key_end);
+	uint32_t res_s, res_r;
+
+	if ((len_s == 8 || len_s == 10) && (len_r == 8 || len_r == 10))
+	{
+		// AAaaBBbb
+		res_s = strtol(key_start, NULL, 16);
+		res_r = strtol(key_end, NULL, 16);
+	} else {
+		printf("Wrong key format. START and END should be specified as AAaaBBbb or 0xAAaaBBbb\n");
+		quit(fd, 1);
+	}
+
+	// Initialize the bruteforce
+	// =========================
+	
+	if (signal(SIGINT, bruteforce_sigterm) == SIG_ERR)
+		printf("device_bruteforce() : cannot create sigint handler\n");
+
+	struct operation_status status_old, status;
+	switch(config->chip)
+	{
+		case BQ40:
+			if (bq40_get_operation_status(&status_old, fd, config) != 0)
+			{
+				printf("device_bruteforce() : failed to get initial status\n");
+				bruteforce_graceful_shutdown(fd);
+			}
+		default:
+			quit(fd, 1);
+	}
+	
+	config->verbose = 0;
+	_bruteforce_fd = fd;
+
+	uint64_t keys_total = (res_r - res_s);
+	uint64_t perc_last = UINT64_MAX;
+	uint32_t key_last = res_s;
+	printf("Initializing bruteforce from %.4x to %.4x with %ld keys total...\n", res_s, res_r, keys_total);
+
+	for (uint32_t key = res_s; key <= res_r; key++)
+	{
+		_bruteforce_key = key;
+
+		uint64_t perc = ((key - res_s) * 10000) / keys_total; // in 100.00%
+		switch(config->chip)
+		{
+			case BQ40:
+			{
+				if (bq40_unlock_priviledges(key, fd, config) != 0)
+				{
+					printf("device_bruteforce() : failed to write key\n");
+					bruteforce_graceful_shutdown(fd);
+				}
+			}
+			default:
+				quit(fd, 1);
+		}
+		
+		if (perc_last != perc)
+		{
+			switch(config->chip)
+			{
+				case BQ40:
+					if (bq40_get_operation_status(&status, fd, config) != 0)
+					{
+						printf("device_bruteforce) : failed to get status\n");
+						bruteforce_graceful_shutdown(fd);
+					}
+				default:
+					quit(fd, 1);
+			}
+
+			if (status.access != status_old.access)
+			{
+				// Found
+				printf("  Found the key in range [%.4d, %.4d]\n", key_last, key);
+				break;
+			}
+			printf("\r[%.4x] Bruteforce : %ld.%ld%% done...", key, perc / 100, perc % 100);
+			fflush(stdout);
+
+			perc_last = perc;
+			key_last = key;
+		}
+	}
+
+	switch(status.access)
+	{
+		case ACCESS_FULL:
+			printf("[!] Successfully obtained FULL access. You are root\n");
+			break;
+		case ACCESS_UNSEALED:
+			printf("[#] Unsealed\n");
+			break;
+		case ACCESS_SEALED:
+			printf("[$] Sealed\n");
+			break;
+		default:
+			printf("ERR while getting status\n");
+			break;
 	}
 }
 

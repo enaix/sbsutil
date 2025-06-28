@@ -37,14 +37,15 @@ void print_help()
 			"Commands:\n"
 			"  preflight      \tRun non-destructive checks using standard SBS commands\n"
 			"  status         \tFetch device-specific status registers\n"
-			"  key            \tElevate priviledges with a KEY, which should be specified as AAaaBBbb or 0xAAaaBBbb\n\n"
+			"  key KEY        \tElevate priviledges with a KEY, which should be specified as AAaaBBbb or 0xAAaaBBbb\n"
+			"  brute START END\tBruteforce keys in an optional range [START, END]\n\n"
 			"Examples:\n"
 			"  sbsutil preflight    \tRun preflight checks without executing ManufacturerAccess commands. Requires loaded sbsctl kernel module to perform ACPI calls.\n"
 			"  sbsutil -f /dev/i2c-2\tRun preflight checks over the second i2c device.\n", chip_names);
 }
 
 
-int command_exec(int fd, const char* cmd, const char* cmd_arg, struct args* config)
+int command_exec(int fd, const char* cmd, const char* cmd_arg1, const char* cmd_arg2, struct args* config)
 {
 	if (!cmd || strcmp(cmd, "preflight") == 0)
 	{
@@ -57,7 +58,11 @@ int command_exec(int fd, const char* cmd, const char* cmd_arg, struct args* conf
 	}
 	else if (strcmp(cmd, "key") == 0)
 	{
-		device_unlock_priviledges(fd, config, cmd_arg);
+		device_unlock_priviledges(fd, config, cmd_arg1);
+	}
+	else if (strcmp(cmd, "brute") == 0)
+	{
+		device_bruteforce(fd, config, cmd_arg1, cmd_arg2);
 	}
 	else
 	{
@@ -135,17 +140,21 @@ int main(int argc, char** argv)
 	}
 
 	const char* cmd = NULL;
-	const char* cmd_arg = NULL;
+	const char* cmd_arg1 = NULL;
+	const char* cmd_arg2 = NULL;
 
 	if (optind < argc)
 	{
 		// Save command
 		cmd = argv[optind];
 		if (optind + 1 < argc)
-			cmd_arg = argv[optind + 1];
+			cmd_arg1 = argv[optind + 1];
+
+		if (optind + 2 < argc)
+			cmd_arg2 = argv[optind + 2];
 
 		// Other arguments
-		if (optind + 2 < argc)
+		if (optind + 3 < argc)
 		{
 			for (int i = optind + 1; i < argc; i++)
 				printf("Argument not recognised: %s\n", argv[i]);
@@ -158,7 +167,7 @@ int main(int argc, char** argv)
 	if (fd < 0)
 		return 1;
 	
-	int res = command_exec(fd, cmd, cmd_arg, &config);
+	int res = command_exec(fd, cmd, cmd_arg1, cmd_arg2, &config);
 
 	quit(fd, res);
 }
