@@ -149,7 +149,7 @@ void device_bruteforce(int fd, struct args* config, const char* key_start, const
 	uint64_t perc_last = UINT64_MAX;
 	uint32_t key_last = res_s;
 	int retries_total = 3, retries = 0, errors_total = 0;
-	printf("Initializing bruteforce from %.4x to %.4x with %ld keys total...\n", res_s, res_r, keys_total);
+	printf("Initializing bruteforce from %.8x to %.8x with %ld keys total...\n", res_s, res_r, keys_total);
 
 	for (uint32_t key = res_s; key <= res_r; key++)
 	{
@@ -169,7 +169,7 @@ void device_bruteforce(int fd, struct args* config, const char* key_start, const
 					if (retries > retries_total || iter == 0)
 						bruteforce_graceful_shutdown(fd);
 					// else retry
-					usleep(5); // We need to clear the current state
+					sleep(5); // We need to clear the current state
 					retries++;
 					key--; // Retry the same key
 					continue;
@@ -180,7 +180,7 @@ void device_bruteforce(int fd, struct args* config, const char* key_start, const
 				quit(fd, 1);
 		}
 		
-		if (perc_last != perc || iter % 250 != 0)
+		if (perc_last != perc || iter % 250 == 0)
 		{
 			switch(config->chip)
 			{
