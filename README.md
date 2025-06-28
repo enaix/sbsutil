@@ -4,7 +4,7 @@ Smart Battery System utility for monitoring and setting smart battery flags. Thi
 
 ## Compilation
 
-This project requires userspace Linux headers (`linux-api-headers`, aka `linux-libc-dev`) and i2c headers, which can be provided by `i2c-tools` package. I2C support can be disabled by running `ENABLE_I2C=0 make ...`.
+This project requires userspace Linux headers (`linux-api-headers`, aka `linux-libc-dev`) and i2c headers, which can be provided by `i2c-tools` or `libi2c-dev` package. I2C support can be disabled by running `ENABLE_I2C=0 make ...`.
 
 `make debug`
 
