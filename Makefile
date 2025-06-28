@@ -63,7 +63,7 @@ release: CFLAGS += ${CFLAGS_RELEASE}
 release: prerun $(TARGETS)
 
 $(TARGETS): %: %.o
-	${C} ${CFLAGS} ${LINK} -o build/$@ build/$^
+	${C} ${CFLAGS} -o build/$@ build/$^ ${LINK}
 
 %.o : src/%.c
 	${C} -c ${CFLAGS} $< ${INCLUDE} -o build/$(notdir $@)

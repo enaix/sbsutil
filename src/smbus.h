@@ -15,7 +15,7 @@
 #include <ctype.h>
 
 #include <linux/types.h>
-#include <sys/io.h>
+//#include <sys/io.h>
 
 // i2c drivers
 #ifdef SBS_ENABLE_I2C
@@ -382,12 +382,13 @@ int device_open(struct args* c)
 		if (probe_acpi_device(c) < 0)
 			return -1;
 		// https://tldp.org/HOWTO/IO-Port-Programming-2.html
-		if (ioperm(c->dev.offset, ACPI_SMB_ALARM_DATA + 1, 1) < 0)
+		/*if (ioperm(c->dev.offset, ACPI_SMB_ALARM_DATA + 1, 1) < 0)
 		{
 			printf("device_open() : could not grant I/O ports permission : %s\n", strerror(errno));
 			return -1;
-		}
-		return 0;
+		}*/
+		printf("device_open() : not implemented\n");
+		return -1; // Not implemented
 	}
 }
 
