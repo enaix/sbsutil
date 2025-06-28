@@ -9,15 +9,15 @@
 #include "src/sbs.h"
 
 
-void sbs_status_get_chemid(int fd, enum ControllerDevice device)
+void sbs_status_get_chemid(int fd, struct args* config)
 {
 	struct chem_id chem;
 	int res;
 
-	switch (device)
+	switch (config->chip)
 	{
 		case BQ40:
-			res = bq40_get_chemid(&chem, fd);
+			res = bq40_get_chemid(&chem, fd, config);
 			break;
 		default:
 			quit(fd, 1);
@@ -31,15 +31,15 @@ void sbs_status_get_chemid(int fd, enum ControllerDevice device)
 	printf("    ChemID : %.4x\n", chem.id);
 }
 
-void sbs_status_get_devicetype(int fd, enum ControllerDevice device)
+void sbs_status_get_devicetype(int fd, struct args* config)
 {
 	struct device_type dev;
 	int res;
 
-	switch (device)
+	switch (config->chip)
 	{
 		case BQ40:
-			res = bq40_get_devicetype(&dev, fd);
+			res = bq40_get_devicetype(&dev, fd, config);
 			break;
 		default:
 			quit(fd, 1);
@@ -53,15 +53,15 @@ void sbs_status_get_devicetype(int fd, enum ControllerDevice device)
 	printf("    DeviceType : %.4x\n", dev.type);
 }
 
-void sbs_status_get_fw_v(int fd, enum ControllerDevice device)
+void sbs_status_get_fw_v(int fd, struct args* config)
 {
 	struct firmware_version fw;
 	int res;
 
-	switch (device)
+	switch (config->chip)
 	{
 		case BQ40:
-			res = bq40_get_firmware_v(&fw, fd);
+			res = bq40_get_firmware_v(&fw, fd, config);
 			break;
 		default:
 			quit(fd, 1);
@@ -75,16 +75,16 @@ void sbs_status_get_fw_v(int fd, enum ControllerDevice device)
 	printf("    FirmwareVersion : %s\n", fw.fw);
 }
 
-void sbs_status_get_op_status(int fd, enum ControllerDevice device)
+void sbs_status_get_op_status(int fd, struct args* config)
 {
 	struct operation_status status;
 	int res;
 
 	printf("\n============\n");
-	switch (device)
+	switch (config->chip)
 	{
 		case BQ40:
-			res = bq40_get_operation_status(&status, fd);
+			res = bq40_get_operation_status(&status, fd, config);
 			break;
 		default:
 			quit(fd, 1);
@@ -158,7 +158,7 @@ void sbs_pf_logger(const char* desc)
 	printf("      [!] %s\n", desc);
 }
 
-void sbs_status_get_pf_status(int fd, enum ControllerDevice device)
+void sbs_status_get_pf_status(int fd, struct args* config)
 {
 	int res;
 	int ok;
@@ -166,12 +166,12 @@ void sbs_status_get_pf_status(int fd, enum ControllerDevice device)
 	printf("\n============\n");
 	printf("\n    Permanent Failure status :\n      ");
 	
-	switch (device)
+	switch (config->chip)
 	{
 		case BQ40:
 		{
 			struct bq40_pf_status status;
-			res = bq40_get_pf_status(&status, &ok, fd);
+			res = bq40_get_pf_status(&status, &ok, fd, config);
 			if (res != 0)
 				break;
 
@@ -197,19 +197,19 @@ void sbs_status_get_pf_status(int fd, enum ControllerDevice device)
 }
 
 
-void sbs_status_get_lifetime_data(int fd, enum ControllerDevice device)
+void sbs_status_get_lifetime_data(int fd, struct args* config)
 {
 	int res;
 
 	printf("\n============\n");
 	printf("\n    Lifetime Data Block :\n      ");
 	
-	switch (device)
+	switch (config->chip)
 	{
 		case BQ40:
 		{
 			struct bq40_lifetime_block data;
-			res = bq40_get_lifetime_data(&data, fd);
+			res = bq40_get_lifetime_data(&data, fd, config);
 			if (res != 0)
 				break;
 			for (int i = 0; i < 5; i++)
@@ -241,11 +241,11 @@ void sbs_status_get_lifetime_data(int fd, enum ControllerDevice device)
 // ================================
 
 
-void sbs_preflight_check_sanity(int fd)
+void sbs_preflight_check_sanity(int fd, struct args* config)
 {
 	struct battery_stats stats;
 	printf("    Battery stats : \n");
-	if (sbs_get_basic_stats(&stats, fd) != 0)
+	if (sbs_get_basic_stats(&stats, fd, config) != 0)
 	{
 		printf("sbs_preflight_check_sanity() : PREFLIGHT ERROR\n");
 		quit(fd, 1);
@@ -258,7 +258,7 @@ void sbs_preflight_check_sanity(int fd)
 
 	struct device_metadata meta;
 	printf("    Device metadata : \n");
-	if (sbs_get_device_metadata(&meta, fd) != 0)
+	if (sbs_get_device_metadata(&meta, fd, config) != 0)
 	{
 		printf("sbs_preflight_check_sanity() : PREFLIGHT ERROR\n");
 		quit(fd, 1);
@@ -271,11 +271,11 @@ void sbs_preflight_check_sanity(int fd)
 	printf("      Device chem: %s\n", meta.chemistry);
 }
 
-void sbs_preflight_check_status(int fd)
+void sbs_preflight_check_status(int fd, struct args* config)
 {
 	struct battery_status status;
 	printf("    SBS Status : \n");
-	if (sbs_get_status(&status, fd) != 0)
+	if (sbs_get_status(&status, fd, config) != 0)
 	{
 		printf("sbs_preflight_check_status() : PREFLIGHT ERROR\n");
 		quit(fd, 1);
@@ -291,11 +291,11 @@ void sbs_preflight_check_status(int fd)
 	printf("      Error code: [%s]\n", BatteryErrorName[status.error]);
 }
 
-void sbs_preflight(int fd)
+void sbs_preflight(int fd, struct args* config)
 {
 	printf("PREFLIGHT : \n");
-	sbs_preflight_check_sanity(fd);
-	sbs_preflight_check_status(fd);
+	sbs_preflight_check_sanity(fd, config);
+	sbs_preflight_check_status(fd, config);
 }
 
 void device_fetch_status(int fd, struct args* config)
@@ -307,11 +307,11 @@ void device_fetch_status(int fd, struct args* config)
 		quit(fd, 1);
 	}
 
-	sbs_status_get_chemid(fd, config->chip);
-	sbs_status_get_devicetype(fd, config->chip);
-	sbs_status_get_fw_v(fd, config->chip);
-	sbs_status_get_op_status(fd, config->chip);
-	sbs_status_get_pf_status(fd, config->chip);
-	sbs_status_get_lifetime_data(fd, config->chip);
+	sbs_status_get_chemid(fd, config);
+	sbs_status_get_devicetype(fd, config);
+	sbs_status_get_fw_v(fd, config);
+	sbs_status_get_op_status(fd, config);
+	sbs_status_get_pf_status(fd, config);
+	sbs_status_get_lifetime_data(fd, config);
 }
 #endif

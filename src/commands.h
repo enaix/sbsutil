@@ -41,14 +41,14 @@ void device_unlock_priviledges(int fd, struct args* config, const char* key)
 	{
 		case BQ40:
 		{
-			if (bq40_unlock_priviledges(res, fd) != 0)
+			if (bq40_unlock_priviledges(res, fd, config) != 0)
 			{
 				printf("device_unlock_priviledges() : failed to write key\n");
 				quit(fd, 1);
 			}
 
 			struct operation_status status;
-			if (bq40_get_operation_status(&status, fd) != 0)
+			if (bq40_get_operation_status(&status, fd, config) != 0)
 			{
 				printf("device_unlock_priviledges() : failed to get status\n");
 				quit(fd, 1);

@@ -49,7 +49,7 @@ int command_exec(int fd, const char* cmd, const char* cmd_arg, struct args* conf
 	if (!cmd || strcmp(cmd, "preflight") == 0)
 	{
 		// Default: run preflight checks
-		sbs_preflight(fd);
+		sbs_preflight(fd, config);
 	}
 	else if (strcmp(cmd, "status") == 0)
 	{
