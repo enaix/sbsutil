@@ -484,9 +484,9 @@ int sbs_exec_block_command(__u8 command, const __u8* data, __u8* result, __u8 le
 		sbs_log_error(res);
 		return 1;
 	}
-	__u8 len = result[0];
+	//__u8 len = result[0];
 	memmove(result, result + 1, cmd_length);
-	printf("sbs_exec_block_command() : read %d bytes\n", len);
+	//printf("sbs_exec_block_command() : read %d bytes\n", len);
 	// We need to return the block size
 
 	return 0;

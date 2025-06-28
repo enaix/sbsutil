@@ -137,6 +137,7 @@ void device_bruteforce(int fd, struct args* config, const char* key_start, const
 				printf("device_bruteforce() : failed to get initial status\n");
 				bruteforce_graceful_shutdown(fd);
 			}
+			break;
 		default:
 			quit(fd, 1);
 	}
@@ -147,13 +148,15 @@ void device_bruteforce(int fd, struct args* config, const char* key_start, const
 	uint64_t keys_total = (res_r - res_s);
 	uint64_t perc_last = UINT64_MAX;
 	uint32_t key_last = res_s;
+	int retries_total = 3, retries = 0, errors_total = 0;
 	printf("Initializing bruteforce from %.4x to %.4x with %ld keys total...\n", res_s, res_r, keys_total);
 
 	for (uint32_t key = res_s; key <= res_r; key++)
 	{
 		_bruteforce_key = key;
 
-		uint64_t perc = ((key - res_s) * 10000) / keys_total; // in 100.00%
+		uint32_t iter = key - res_s;
+		uint64_t perc = (iter * 10000) / keys_total; // in 100.00%
 		switch(config->chip)
 		{
 			case BQ40:
@@ -161,8 +164,16 @@ void device_bruteforce(int fd, struct args* config, const char* key_start, const
 				if (bq40_unlock_priviledges(key, fd, config) != 0)
 				{
 					printf("device_bruteforce() : failed to write key\n");
-					bruteforce_graceful_shutdown(fd);
+					errors_total++;
+					if (retries > retries_total || iter == 0)
+						bruteforce_graceful_shutdown(fd);
+					// else retry
+					usleep(1000*10);
+					retries++;
+					key--; // Retry the same key
+					continue;
 				}
+				break;
 			}
 			default:
 				quit(fd, 1);
@@ -176,8 +187,17 @@ void device_bruteforce(int fd, struct args* config, const char* key_start, const
 					if (bq40_get_operation_status(&status, fd, config) != 0)
 					{
 						printf("device_bruteforce) : failed to get status\n");
+						errors_total++;
 						bruteforce_graceful_shutdown(fd);
+						if (retries > retries_total || iter == 0)
+							bruteforce_graceful_shutdown(fd);
+						// else retry
+						usleep(1000*10);
+						retries++;
+						key--; // Retry the same key
+						continue;
 					}
+					break;
 				default:
 					quit(fd, 1);
 			}
@@ -186,31 +206,35 @@ void device_bruteforce(int fd, struct args* config, const char* key_start, const
 			{
 				// Found
 				printf("  Found the key in range [%.4d, %.4d]\n", key_last, key);
+				switch(status.access)
+				{
+					case ACCESS_FULL:
+						printf("  [!] Successfully obtained FULL access. You are root\n");
+						break;
+					case ACCESS_UNSEALED:
+						printf("  [#] Unsealed\n");
+						break;
+					case ACCESS_SEALED:
+						printf("  [$] Sealed\n");
+						break;
+					default:
+						printf("  ERR while getting status\n");
+						break;
+				}
 				break;
 			}
-			printf("\r[%.4x] Bruteforce : %ld.%ld%% done...", key, perc / 100, perc % 100);
+			printf("\r[%.4x] Bruteforce : %.2ld.%.2ld%% done...", key, perc / 100, perc % 100);
 			fflush(stdout);
 
 			perc_last = perc;
 			key_last = key;
 		}
+		retries = 0;
 	}
 
-	switch(status.access)
-	{
-		case ACCESS_FULL:
-			printf("[!] Successfully obtained FULL access. You are root\n");
-			break;
-		case ACCESS_UNSEALED:
-			printf("[#] Unsealed\n");
-			break;
-		case ACCESS_SEALED:
-			printf("[$] Sealed\n");
-			break;
-		default:
-			printf("ERR while getting status\n");
-			break;
-	}
+	
+
+	printf("  Stats: %d errors out of %ld keys total\n", errors_total, keys_total);
 }
 
 

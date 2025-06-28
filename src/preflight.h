@@ -164,7 +164,7 @@ void sbs_status_get_pf_status(int fd, struct args* config)
 	int ok;
 
 	printf("\n============\n");
-	printf("\n    Permanent Failure status :\n      ");
+	printf("\n    Permanent Failure status :\n");
 	
 	switch (config->chip)
 	{
@@ -202,7 +202,7 @@ void sbs_status_get_lifetime_data(int fd, struct args* config)
 	int res;
 
 	printf("\n============\n");
-	printf("\n    Lifetime Data Block :\n      ");
+	printf("\n    Lifetime Data Block :\n");
 	
 	switch (config->chip)
 	{
