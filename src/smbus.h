@@ -51,7 +51,7 @@ enum acpi_smb_offset {
 char* acpi_sbs_device_hid[] = {"ACPI0001", "ACPI0005", "PNP0C09", "PNP0C0A", ""}; // "" is an end of array marker
 
 
-void check_device_capabilities(int fd)
+void check_device_capabilities(int fd, struct args* config)
 {
 	#ifdef SBS_ENABLE_I2C
 	unsigned long funcs;
@@ -83,15 +83,16 @@ void check_device_capabilities(int fd)
 	
 	static const int flags_n = sizeof(flags) / sizeof(const unsigned long), flags_required_n = sizeof(flags_required) / sizeof(const unsigned long);
 
-#ifdef ENABLE_DEBUG
-	printf("device capabilities : ");
-	for (int i = 0; i < flags_n; i++)
+	if (config->verbose)
 	{
-		if ((funcs & flags[i]) > 0)
-			printf("%s ", c_flags[i]);
+		printf("device capabilities : ");
+		for (int i = 0; i < flags_n; i++)
+		{
+			if ((funcs & flags[i]) > 0)
+				printf("%s ", c_flags[i]);
+		}
+		printf("\n");
 	}
-	printf("\n");
-#endif
 
 	for (int i = 0; i < flags_required_n; i++)
 	{
@@ -363,7 +364,7 @@ int device_open(struct args* c)
 			exit(1);
 		}
 
-		check_device_capabilities(fd);
+		check_device_capabilities(fd, c);
 		if (ioctl(fd, I2C_SLAVE, ACPI_SBS_BATTERY) < 0)
 		{
 			printf("device_open() : could not change device address\n");

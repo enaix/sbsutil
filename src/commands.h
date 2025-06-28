@@ -164,6 +164,7 @@ void device_bruteforce(int fd, struct args* config, const char* key_start, const
 				if (bq40_unlock_priviledges(key, fd, config) != 0)
 				{
 					printf("device_bruteforce() : failed to write key\n");
+					fflush(stdout);
 					errors_total++;
 					if (retries > retries_total || iter == 0)
 						bruteforce_graceful_shutdown(fd);
@@ -187,6 +188,7 @@ void device_bruteforce(int fd, struct args* config, const char* key_start, const
 					if (bq40_get_operation_status(&status, fd, config) != 0)
 					{
 						printf("device_bruteforce) : failed to get status\n");
+						fflush(stdout);
 						errors_total++;
 						bruteforce_graceful_shutdown(fd);
 						if (retries > retries_total || iter == 0)
@@ -221,6 +223,7 @@ void device_bruteforce(int fd, struct args* config, const char* key_start, const
 						printf("  ERR while getting status\n");
 						break;
 				}
+				fflush(stdout);
 				break;
 			}
 			printf("\r[%.4x] Bruteforce : %.2ld.%.2ld%% done...", key, perc / 100, perc % 100);
@@ -229,12 +232,19 @@ void device_bruteforce(int fd, struct args* config, const char* key_start, const
 			perc_last = perc;
 			key_last = key;
 		}
+		// each 10 iterations
+		if (iter % 10 == 0)
+		{
+			printf("\r[%.4x] Bruteforce : %.2ld.%.2ld%% done...", key, perc / 100, perc % 100);
+			fflush(stdout);
+		}
 		retries = 0;
 	}
 
 	
 
 	printf("  Stats: %d errors out of %ld keys total\n", errors_total, keys_total);
+	fflush(stdout);
 }
 
 
