@@ -163,13 +163,13 @@ void device_bruteforce(int fd, struct args* config, const char* key_start, const
 			{
 				if (bq40_unlock_priviledges(key, fd, config) != 0)
 				{
-					printf("device_bruteforce() : failed to write key\n");
+					printf("[%.8x] device_bruteforce() : failed to write key\n", key);
 					fflush(stdout);
 					errors_total++;
 					if (retries > retries_total || iter == 0)
 						bruteforce_graceful_shutdown(fd);
 					// else retry
-					usleep(1000*10);
+					usleep(5); // We need to clear the current state
 					retries++;
 					key--; // Retry the same key
 					continue;
@@ -180,21 +180,21 @@ void device_bruteforce(int fd, struct args* config, const char* key_start, const
 				quit(fd, 1);
 		}
 		
-		if (perc_last != perc)
+		if (perc_last != perc || iter % 250 != 0)
 		{
 			switch(config->chip)
 			{
 				case BQ40:
 					if (bq40_get_operation_status(&status, fd, config) != 0)
 					{
-						printf("device_bruteforce) : failed to get status\n");
+						printf("[%.8x] device_bruteforce) : failed to get status\n", key);
 						fflush(stdout);
 						errors_total++;
 						bruteforce_graceful_shutdown(fd);
 						if (retries > retries_total || iter == 0)
 							bruteforce_graceful_shutdown(fd);
 						// else retry
-						usleep(1000*10);
+						sleep(5); // We need to clear the current state
 						retries++;
 						key--; // Retry the same key
 						continue;
@@ -207,7 +207,7 @@ void device_bruteforce(int fd, struct args* config, const char* key_start, const
 			if (status.access != status_old.access)
 			{
 				// Found
-				printf("  Found the key in range [%.4d, %.4d]\n", key_last, key);
+				printf("  Found the key in range [%.8d, %.8d]\n", key_last, key);
 				switch(status.access)
 				{
 					case ACCESS_FULL:
@@ -226,17 +226,11 @@ void device_bruteforce(int fd, struct args* config, const char* key_start, const
 				fflush(stdout);
 				break;
 			}
-			printf("\r[%.4x] Bruteforce : %.2ld.%.2ld%% done...", key, perc / 100, perc % 100);
+			printf("\r[%.8x] Bruteforce : %.2ld.%.2ld%% done...", key, perc / 100, perc % 100);
 			fflush(stdout);
 
 			perc_last = perc;
 			key_last = key;
-		}
-		// each 10 iterations
-		if (iter % 10 == 0)
-		{
-			printf("\r[%.4x] Bruteforce : %.2ld.%.2ld%% done...", key, perc / 100, perc % 100);
-			fflush(stdout);
 		}
 		retries = 0;
 	}
