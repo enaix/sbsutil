@@ -197,6 +197,46 @@ void sbs_status_get_pf_status(int fd, enum ControllerDevice device)
 }
 
 
+void sbs_status_get_lifetime_data(int fd, enum ControllerDevice device)
+{
+	int res;
+
+	printf("\n============\n");
+	printf("\n    Lifetime Data Block :\n      ");
+	
+	switch (device)
+	{
+		case BQ40:
+		{
+			struct bq40_lifetime_block data;
+			res = bq40_get_lifetime_data(&data, fd);
+			if (res != 0)
+				break;
+			for (int i = 0; i < 5; i++)
+			{
+				printf("      block %d: ", i+1);
+				//for (int s = 0; s < 32; i++)
+				//{
+					//printf("%02x", (__u8)data.blocks[i][s]);
+				//}
+				printf("%s", data.blocks[i]);
+				printf("\n");
+			}
+			break;
+		}
+		default:
+			quit(fd, 1);
+	}
+
+	if (res != 0)
+	{
+		printf("sbs_status_get_lifetime_data() : PREFLIGHT ERROR\n");
+		quit(fd, 1);
+	}
+	printf("\n============\n");
+}
+
+
 // SBS-COMPLIANT PREFLIGHT COMMANDS
 // ================================
 
@@ -272,5 +312,6 @@ void device_fetch_status(int fd, struct args* config)
 	sbs_status_get_fw_v(fd, config->chip);
 	sbs_status_get_op_status(fd, config->chip);
 	sbs_status_get_pf_status(fd, config->chip);
+	sbs_status_get_lifetime_data(fd, config->chip);
 }
 #endif

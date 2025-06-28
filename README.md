@@ -30,6 +30,7 @@ NOTE: i2c commands can potentially cause harm when sent to a wrong device!
 Commands:
   preflight      	Run non-destructive checks using standard SBS commands
   status         	Fetch device-specific status registers
+  key            	Elevate priviledges with a KEY, which should be specified as AAaaBBbb or 0xAAaaBBbb
 
 Examples:
   sbsutil preflight    	Run preflight checks without executing ManufacturerAccess commands. Requires loaded sbsctl kernel module to perform ACPI calls.

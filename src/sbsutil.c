@@ -5,7 +5,7 @@
 #include <getopt.h>
 
 #include "src/structs.h"
-#include "src/preflight.h"
+#include "src/commands.h"
 
 
 // Prints chip names to the chip_names variable
@@ -36,14 +36,15 @@ void print_help()
 			"  -c, --chip=CHIP\toverride SBS controller model. CHIP is one of: [%s]\n\n"
 			"Commands:\n"
 			"  preflight      \tRun non-destructive checks using standard SBS commands\n"
-			"  status         \tFetch device-specific status registers\n\n"
+			"  status         \tFetch device-specific status registers\n"
+			"  key            \tElevate priviledges with a KEY, which should be specified as AAaaBBbb or 0xAAaaBBbb\n\n"
 			"Examples:\n"
 			"  sbsutil preflight    \tRun preflight checks without executing ManufacturerAccess commands. Requires loaded sbsctl kernel module to perform ACPI calls.\n"
 			"  sbsutil -f /dev/i2c-2\tRun preflight checks over the second i2c device.\n", chip_names);
 }
 
 
-int command_exec(int fd, const char* cmd, struct args* config)
+int command_exec(int fd, const char* cmd, const char* cmd_arg, struct args* config)
 {
 	if (!cmd || strcmp(cmd, "preflight") == 0)
 	{
@@ -53,6 +54,10 @@ int command_exec(int fd, const char* cmd, struct args* config)
 	else if (strcmp(cmd, "status") == 0)
 	{
 		device_fetch_status(fd, config);
+	}
+	else if (strcmp(cmd, "key") == 0)
+	{
+		device_unlock_priviledges(fd, config, cmd_arg);
 	}
 	else
 	{
@@ -130,14 +135,17 @@ int main(int argc, char** argv)
 	}
 
 	const char* cmd = NULL;
+	const char* cmd_arg = NULL;
 
 	if (optind < argc)
 	{
 		// Save command
 		cmd = argv[optind];
+		if (optind + 1 < argc)
+			cmd_arg = argv[optind + 1];
 
 		// Other arguments
-		if (optind + 1 < argc)
+		if (optind + 2 < argc)
 		{
 			for (int i = optind + 1; i < argc; i++)
 				printf("Argument not recognised: %s\n", argv[i]);
@@ -150,7 +158,7 @@ int main(int argc, char** argv)
 	if (fd < 0)
 		return 1;
 	
-	int res = command_exec(fd, cmd, &config);
+	int res = command_exec(fd, cmd, cmd_arg, &config);
 
 	quit(fd, res);
 }

@@ -23,7 +23,7 @@ int bq40_get_chemid(struct chem_id* chem, int fd)
 {
 	__u8 command[2] = {0x06, 0x00}; // LITTLE_ENDIAN
 	__u8 data[32] = {}; // zero-init
-	if (sbs_exec_block_command(0x44, command, data, 2, fd) != 0)
+	if (sbs_exec_block_command(0x44, command, data, 2, fd, 31) != 0)
 	{
 		printf("bq40_get_chemid() : could not get ChemID data\n");
 		return 1;
@@ -50,7 +50,7 @@ int bq40_get_devicetype(struct device_type* dev, int fd)
 {
 	__u8 command[2] = {0x01, 0x00}; // LITTLE_ENDIAN
 	__u8 data[32] = {}; // zero-init
-	if (sbs_exec_block_command(0x44, command, data, 2, fd) != 0)
+	if (sbs_exec_block_command(0x44, command, data, 2, fd, 31) != 0)
 	{
 		printf("bq40_get_devicetype() : could not get DeviceType\n");
 		return 1;
@@ -77,7 +77,7 @@ int bq40_get_firmware_v(struct firmware_version* fw, int fd)
 {
 	__u8 command[2] = {0x02, 0x00}; // LITTLE_ENDIAN
 	__u8 data[32] = {}; // zero-init
-	if (sbs_exec_block_command(0x44, command, data, 2, fd) != 0)
+	if (sbs_exec_block_command(0x44, command, data, 2, fd, 31) != 0)
 	{
 		printf("bq40_get_firmware_v() : could not get FirmwareVersion\n");
 		return 1;
@@ -105,7 +105,7 @@ int bq40_get_operation_status(struct operation_status* status, int fd)
 {
 	__u8 command[2] = {0x54, 0x00};
 	__u8 data[32] = {};
-	if (sbs_exec_block_command(0x44, command, data, 2, fd) != 0)
+	if (sbs_exec_block_command(0x44, command, data, 2, fd, 31) != 0)
 	{
 		printf("bq40_get_operation_status() : could not get OperationStatus\n");
 		return 1;
@@ -235,9 +235,9 @@ int bq40_get_pf_status(struct bq40_pf_status* status, int* ok, int fd)
 {
 	__u8 command[2] = {0x53, 0x00};
 	__u8 data[32] = {};
-	if (sbs_exec_block_command(0x44, command, data, 2, fd) != 0)
+	if (sbs_exec_block_command(0x44, command, data, 2, fd, 31) != 0)
 	{
-		printf("bq40_get_operation_status() : could not get OperationStatus\n");
+		printf("bq40_get_pf_status() : could not get PFStatus\n");
 		return 1;
 	}
 
@@ -284,5 +284,73 @@ int bq40_get_pf_status(struct bq40_pf_status* status, int* ok, int fd)
 	*ok = (flags == 0);
 	return 0;
 }
+
+struct bq40_lifetime_block
+{
+	char blocks[5][32];
+};
+
+
+int bq40_get_lifetime_data(struct bq40_lifetime_block* blocks, int fd)
+{
+	for (int i = 0; i < 5; i++)
+	{
+		__u8 command[2] = {0x60 + i, 0x00};
+		__u8 data[64] = {};
+
+		if (sbs_exec_block_command(0x44, command, data, 2, fd, 32) != 0)
+		{
+			printf("bq40_get_lifetime_data() : could not get Lifetime Data Block %d\n", i+1);
+			return 1;
+		}
+
+#ifdef ENABLE_DEBUG
+		printf("    block %d -> ", i+1);
+		smbus_print_block(data);
+#endif
+
+		if (sbs_block_check_mac(command, data, 2) != 0)
+		{
+			printf("bq40_get_lifetime_data() : bad MAC command\n");
+			return 1;
+		}
+
+		memcpy(blocks->blocks[i], data, 32);
+	}
+	return 0;
+}
+
+
+int bq40_unlock_priviledges(uint32_t key, int fd)
+{
+	// Split the key in two parts
+	__u8* key8 = (__u8*)(&key);
+	__u8 key8_le[] = {key8[2], key8[3], key8[0], key8[1]}; // LITTLE ENDIAN
+	//__u8 key8_le[] = {key8[3], key8[2], key8[1], key8[0]};
+	__u16* key16 = (__u16*)(key8_le);
+
+	__u16 key_lhs = key16[0];
+	__u16 key_rhs = key16[1];
+
+#ifdef ENABLE_DEBUG
+	printf("    word -> ");
+	smbus_print_block_l(key8_le, 4);
+#endif
+
+	if (sbs_write_word(fd, 0x00, key_lhs) != 0)
+	{
+		printf("bq40_unlock_priviledges() : could not write first word of the key\n");
+		return 1;
+	}
+
+	if (sbs_write_word(fd, 0x00, key_rhs) != 0)
+	{
+		printf("bq40_unlock_priviledges() : could not write second word of the key\n");
+		return 1;
+	}
+
+	return 0;
+}
+
 
 #endif
