@@ -443,10 +443,10 @@ __s32 sbs_write_word(int fd, __u8 command, __u16 data)
 }
 
 
-__s32 sbs_read_block(int fd, __u8 command, __u8* result)
+__s32 sbs_read_block_l(int fd, __u8 command, __u8* result, __u8 length)
 {
 	#ifdef SBS_ENABLE_I2C
-	__s32 res = i2c_smbus_read_i2c_block_data(fd, command, 32, result);
+	__s32 res = i2c_smbus_read_i2c_block_data(fd, command, length, result);
 	if (res < 0)
 	{
 		int err = (int)(-res);
@@ -459,6 +459,16 @@ __s32 sbs_read_block(int fd, __u8 command, __u8* result)
 		sbs_log_error(res);
 	}
 	return res;
+	#else
+	return -1;
+	#endif
+}
+
+
+__s32 sbs_read_block(int fd, __u8 command, __u8* result)
+{
+	#ifdef SBS_ENABLE_I2C
+	return sbs_read_block_l(fd, command, result, 32);
 	#else
 	return -1;
 	#endif

@@ -271,4 +271,28 @@ void device_bruteforce(int fd, struct args* config, const char* key_start, const
 }
 
 
+void device_dump_flash(int fd, struct args* config)
+{
+	if (config->chip == AUTO)
+	{
+		printf("AUTO chip model fetch is not supported yet. Please specify the CHIP argument\n");
+		quit(fd, 1);
+	}
+
+	switch(config->chip)
+	{
+		case BQ40:
+		{
+			if (bq40_dump_flash(fd, config) != 0)
+			{
+				printf("device_dump_flash() : failed to read flash\n");
+				quit(fd, 1);
+			}
+		}
+		default:
+			quit(fd, 1);
+	}
+}
+
+
 #endif

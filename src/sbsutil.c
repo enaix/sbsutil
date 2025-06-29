@@ -38,7 +38,8 @@ void print_help()
 			"  preflight      \tRun non-destructive checks using standard SBS commands\n"
 			"  status         \tFetch device-specific status registers\n"
 			"  key KEY        \tElevate priviledges with a KEY, which should be specified as AAaaBBbb or 0xAAaaBBbb\n"
-			"  brute START END\tBruteforce keys in an optional range [START, END]\n\n"
+			"  brute START END\tBruteforce keys in an optional range [START, END]\n"
+			"  flash          \tDump contents of the flash memory\n\n"
 			"Examples:\n"
 			"  sbsutil preflight    \tRun preflight checks without executing ManufacturerAccess commands. Requires loaded sbsctl kernel module to perform ACPI calls.\n"
 			"  sbsutil -f /dev/i2c-2\tRun preflight checks over the second i2c device.\n", chip_names);
@@ -63,6 +64,10 @@ int command_exec(int fd, const char* cmd, const char* cmd_arg1, const char* cmd_
 	else if (strcmp(cmd, "brute") == 0)
 	{
 		device_bruteforce(fd, config, cmd_arg1, cmd_arg2);
+	}
+	else if (strcmp(cmd, "flash") == 0)
+	{
+		device_dump_flash(fd, config);
 	}
 	else
 	{

@@ -269,6 +269,7 @@ void sbs_preflight_check_sanity(int fd, struct args* config)
 	printf("      Vendor name: %s\n", meta.vendor);
 	printf("      Device name: %s\n", meta.device);
 	printf("      Device chem: %s\n", meta.chemistry);
+	printf("      Manufacturer info: %s\n", meta.manufacturer_info);
 }
 
 void sbs_preflight_check_status(int fd, struct args* config)

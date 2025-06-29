@@ -32,6 +32,7 @@ Commands:
   status         	Fetch device-specific status registers
   key KEY        	Elevate priviledges with a KEY, which should be specified as AAaaBBbb or 0xAAaaBBbb
   brute START END	Bruteforce keys in an optional range [START, END]
+  flash          	Dump contents of the flash memory
 
 Examples:
   sbsutil preflight    	Run preflight checks without executing ManufacturerAccess commands. Requires loaded sbsctl kernel module to perform ACPI calls.

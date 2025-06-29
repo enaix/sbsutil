@@ -362,4 +362,41 @@ int bq40_unlock_priviledges(uint32_t key, int fd, struct args* config)
 }
 
 
+int bq40_dump_flash(int fd, struct args* config)
+{
+	__u8 command[2] = {0x40, 0x00}; // LITTLE_ENDIAN
+	__u8 data[33] = {}; // zero-init
+	
+	__s32 res = i2c_smbus_write_block_data(fd, 0x44, 2, command);
+	if (res < 0)
+	{
+		sbs_log_error(res);
+		printf("bq40_dump_flash() : could not send read flash command\n");
+		return 1;
+	}
+
+	for (int i = 0; i < 5; i++)
+	{
+		res = i2c_smbus_read_i2c_block_data(fd, 0x44, 32 + 1, data);
+		if (res < 0)
+		{
+			sbs_log_error(res);
+			printf("bq40_dump_flash() : could not read flash\n");
+			return 1;
+		}
+		memmove(data, data + 1, 32);
+
+		if (config->verbose)
+		{
+			printf("    block -> ");
+			smbus_print_block_l(data, 33);
+		}
+	}
+
+	//chem->id = smbus_block_LE_to_ui32(data + 2, 2);
+
+	return 0;
+}
+
+
 #endif

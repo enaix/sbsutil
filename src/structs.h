@@ -59,6 +59,7 @@ struct device_metadata
 	char vendor[32];
 	char device[32];
 	char chemistry[32];
+	char manufacturer_info[64];
 };
 
 

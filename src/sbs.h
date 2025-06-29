@@ -81,7 +81,8 @@ int sbs_get_device_metadata(struct device_metadata* meta, int fd, struct args* c
 		return 1;
 	}
 
-	memcpy(meta->vendor, (char*)data, 33);
+	memcpy(meta->vendor, (char*)data, 32);
+	meta->vendor[31] = '\0';
 
 	if (config->verbose)
 	{
@@ -96,7 +97,8 @@ int sbs_get_device_metadata(struct device_metadata* meta, int fd, struct args* c
 		return 1;
 	}
 
-	memcpy(meta->device, (char*)data, 33);
+	memcpy(meta->device, (char*)data, 32);
+	meta->device[31] = '\0';
 
 	if (config->verbose)
 	{
@@ -111,12 +113,24 @@ int sbs_get_device_metadata(struct device_metadata* meta, int fd, struct args* c
 		return 1;
 	}
 
-	memcpy(meta->chemistry, (char*)data, 33);
+	memcpy(meta->chemistry, (char*)data, 32);
+	meta->chemistry[31] = '\0';
 
 	if (config->verbose)
 	{
 		printf("    block [chem] ->");
 		smbus_print_block(data);
+	}
+
+	__u8 data_l[64] = {};
+	res = sbs_read_block_l(fd, 0x23, data_l, 33);
+	memcpy(meta->manufacturer_info, (char*)data_l, 64);
+	meta->manufacturer_info[32] = '\0';
+
+	if (config->verbose)
+	{
+		printf("    block [minf] ->");
+		smbus_print_block_l(data_l, 64);
 	}
 
 	return 0;
