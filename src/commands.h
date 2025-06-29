@@ -11,6 +11,7 @@
 #include "src/sbs.h"
 
 #include <signal.h>
+#include <time.h>
 
 
 uint32_t _bruteforce_key;
@@ -85,7 +86,7 @@ void device_unlock_priviledges(int fd, struct args* config, const char* key)
 
 void bruteforce_graceful_shutdown(int fd)
 {
-	printf("Iteration stopped at %.4x\n", _bruteforce_key);
+	printf("Iteration stopped at %.8x\n", _bruteforce_key);
 	quit(fd, 1);
 }
 
@@ -141,6 +142,16 @@ void device_bruteforce(int fd, struct args* config, const char* key_start, const
 		default:
 			quit(fd, 1);
 	}
+
+	int64_t time_last;
+	uint64_t time_value_last = res_s, speed = 0;
+	struct timespec time_spec;
+	if (clock_gettime(CLOCK_MONOTONIC, &time_spec) == -1)
+	{
+		printf("device_bruteforce() : clock_gettime failed\n");
+		quit(fd, 1);
+	}
+	time_last = time_spec.tv_sec;
 	
 	config->verbose = 0;
 	_bruteforce_fd = fd;
@@ -148,8 +159,10 @@ void device_bruteforce(int fd, struct args* config, const char* key_start, const
 	uint64_t keys_total = (res_r - res_s);
 	uint64_t perc_last = UINT64_MAX;
 	uint32_t key_last = res_s;
-	int retries_total = 3, retries = 0, errors_total = 0;
+	int retries_total = 10, retries = 0, errors_total = 0;
+
 	printf("Initializing bruteforce from %.8x to %.8x with %ld keys total...\n", res_s, res_r, keys_total);
+	usleep(1000*4);
 
 	for (uint32_t key = res_s; key <= res_r; key++)
 	{
@@ -174,6 +187,7 @@ void device_bruteforce(int fd, struct args* config, const char* key_start, const
 					key--; // Retry the same key
 					continue;
 				}
+				usleep(1000*4);
 				break;
 			}
 			default:
@@ -187,7 +201,7 @@ void device_bruteforce(int fd, struct args* config, const char* key_start, const
 				case BQ40:
 					if (bq40_get_operation_status(&status, fd, config) != 0)
 					{
-						printf("[%.8x] device_bruteforce) : failed to get status\n", key);
+						printf("[%.8x] device_bruteforce() : failed to get status\n", key);
 						fflush(stdout);
 						errors_total++;
 						bruteforce_graceful_shutdown(fd);
@@ -226,13 +240,28 @@ void device_bruteforce(int fd, struct args* config, const char* key_start, const
 				fflush(stdout);
 				break;
 			}
-			printf("\r[%.8x] Bruteforce : %.2ld.%.2ld%% done...", key, perc / 100, perc % 100);
+			printf("\r[%.8x] Bruteforce : %ld it/s, %.2ld.%.2ld%% done...", key, speed, perc / 100, perc % 100);
 			fflush(stdout);
 
 			perc_last = perc;
 			key_last = key;
 		}
+
 		retries = 0;
+
+		// Calculate speed
+		if ((iter + 900) % 1000 == 0)
+		{
+			struct timespec new_time_t;
+			if (clock_gettime(CLOCK_MONOTONIC, &new_time_t) == -1)
+			{
+				printf("device_bruteforce() : clock_gettime failed\n");
+				continue;
+			}
+			speed = (key - time_value_last) / ((new_time_t.tv_sec - time_last)); // s
+			time_value_last = key;
+			time_last = new_time_t.tv_sec;
+		}
 	}
 
 	

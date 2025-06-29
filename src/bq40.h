@@ -350,6 +350,8 @@ int bq40_unlock_priviledges(uint32_t key, int fd, struct args* config)
 		return 1;
 	}
 
+	//usleep(1000*1);
+
 	if (sbs_write_word(fd, 0x00, key_rhs) != 0)
 	{
 		printf("bq40_unlock_priviledges() : could not write second word of the key\n");
