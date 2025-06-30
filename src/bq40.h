@@ -19,6 +19,28 @@
 // ===============================
 
 
+static uint16_t bq40_mac[] = {
+	0x0000, 0x0001, 0x0002, 0x0003, 0x0004, 0x0005, 0x0006, 0x0008, 0x0009, 0x0010, 0x0011,
+	0x0013, 0x001D, 0x001E, 0x001F, 0x0020, 0x0021, 0x0022, 0x0023, 0x0024, 0x0025, 0x0026,
+	0x0027, 0x0028, 0x0029, 0x002A, 0x002B, 0x002C, 0x002D, 0x002E, 0x002F, 0x0030, 0x0035,
+	0x0037, 0x0041, 0x0050, 0x0051, 0x0052, 0x0053, 0x0054, 0x0055, 0x0056, 0x0057, 0x0058,
+	0x0060, 0x0061, 0x0062, 0x0063, 0x0064, 0x0070, 0x0071, 0x0072, 0x0073, 0x0074, 0x0075,
+	0x0076, 0x0077, 0x0078, 0x0F00, 0xF080, 0xF081, 0xF082
+};
+
+struct bq40_mac_range
+{
+	uint16_t start;
+	uint16_t end;
+};
+
+static struct bq40_mac_range bq40_mac_ranges[] = {
+	{.start=0x4000, .end=0x5FFF}
+};
+
+
+
+
 int bq40_get_chemid(struct chem_id* chem, int fd, struct args* config)
 {
 	__u8 command[2] = {0x06, 0x00}; // LITTLE_ENDIAN
@@ -396,6 +418,46 @@ int bq40_dump_flash(int fd, struct args* config)
 	//chem->id = smbus_block_LE_to_ui32(data + 2, 2);
 
 	return 0;
+}
+
+
+int bq40_check_key_format(uint32_t key, int log_reason)
+{
+	__u8* key8 = (__u8*)(&key);
+	uint16_t key_l = *((uint16_t*)(key8) + 1);
+
+	for (int i = 0; i < sizeof(bq40_mac) / sizeof(uint16_t); i++)
+	{
+		if (key_l == bq40_mac[i])
+		{
+			if (log_reason)
+				printf("bq40_check_key_format() : first word of the key %.4x collides with the MAC command\n", key_l);
+			return 0;
+		}
+	}
+
+	for (int i = 0; i < sizeof(bq40_mac_ranges) / sizeof(struct bq40_mac_range); i++)
+	{
+		if (key_l >= bq40_mac_ranges[i].start && key_l <= bq40_mac_ranges[i].end)
+		{
+			if (log_reason)
+				printf("bq40_check_key_format() : first word of the key %.4x cannot be in range [%.4x, %.4x] : MAC collision\n", key_l, bq40_mac_ranges[i].start, bq40_mac_ranges[i].end);
+			return 0;
+		}
+	}
+	return 1;
+}
+
+
+int bq40_write_security_keys(int fd, uint32_t unseal_key, uint32_t fa_key, struct args* config)
+{
+	__u8* ukey8 = (__u8*)(&unseal_key);
+	__u8* fakey8 = (__u8*)(&fa_key);
+
+	__u8 data[] = {0x35, 0x00, ukey8[2], ukey8[3], ukey8[0], ukey8[1],
+			fakey8[2], fakey8[3], fakey8[0], fakey8[1]}; // LITTLE ENDIAN
+	
+	
 }
 
 

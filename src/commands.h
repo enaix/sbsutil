@@ -48,6 +48,11 @@ void device_unlock_priviledges(int fd, struct args* config, const char* key)
 	{
 		case BQ40:
 		{
+			if (!bq40_check_key_format(res, 1))
+			{
+				printf("Bad key format\n");
+				quit(fd, 1);
+			}
 			if (bq40_unlock_priviledges(res, fd, config) != 0)
 			{
 				printf("device_unlock_priviledges() : failed to write key\n");
