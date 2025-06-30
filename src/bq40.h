@@ -397,7 +397,9 @@ int bq40_dump_flash(int fd, struct args* config)
 		return 1;
 	}
 
-	for (int i = 0; i < 5; i++)
+	// Get the range of addresses [0x4000 - 0x5FFF]
+
+	for (int i = 0x4000; i <= 0x5FFF; i++)
 	{
 		res = i2c_smbus_read_i2c_block_data(fd, 0x44, 32 + 1, data);
 		if (res < 0)
@@ -408,11 +410,9 @@ int bq40_dump_flash(int fd, struct args* config)
 		}
 		memmove(data, data + 1, 32);
 
-		if (config->verbose)
-		{
-			printf("    block -> ");
-			smbus_print_block_l(data, 33);
-		}
+		printf("    [%.4x] -> ", i);
+		smbus_print_block_l(data, 33);
+		usleep(1000*4); // 4 ms delay
 	}
 
 	//chem->id = smbus_block_LE_to_ui32(data + 2, 2);
@@ -457,7 +457,14 @@ int bq40_write_security_keys(int fd, uint32_t unseal_key, uint32_t fa_key, struc
 	__u8 data[] = {0x35, 0x00, ukey8[2], ukey8[3], ukey8[0], ukey8[1],
 			fakey8[2], fakey8[3], fakey8[0], fakey8[1]}; // LITTLE ENDIAN
 	
-	
+	__s32 res = i2c_smbus_write_block_data(fd, 0x44, 10, data);
+	if (res < 0)
+	{
+		sbs_log_error(res);
+		printf("bq40_write_security_keys() : could not write new keys\n");
+		return 1;
+	}
+	return 0;
 }
 
 

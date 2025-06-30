@@ -300,4 +300,5 @@ void device_dump_flash(int fd, struct args* config)
 }
 
 
+
 #endif
