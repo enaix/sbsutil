@@ -13,6 +13,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "src/structs.h"
+
 struct gpiod_chip* gpio_chip = NULL;
 struct gpiod_line* gpio_pin_voltage = NULL;
 
@@ -60,10 +62,10 @@ void rpi_gpio_close()
 }
 
 
-int rpi_gpio_set(int voltage)
+inline int rpi_gpio_set(int voltage)
 {
 	int ret = gpiod_line_set_value(gpio_pin_voltage, voltage);
-	if (ret < 0)
+	if (unlikely(ret < 0))
 	{
 		const char hi[] = "HIGH";
 		const char lo[] = "LOW";
@@ -86,14 +88,14 @@ int rpi_gpio_set(int voltage)
 // ================
 
 
-static const char* voltage_ctrl_modes[] = {
+const char* voltage_ctrl_modes[] = {
 	"RPI GPIO", // 0
 	"NONE",
 };
 
 
 
-int voltage_ctrl_supported()
+inline int voltage_ctrl_supported()
 {
 #ifdef SBS_RPI
 	return 1;
@@ -102,7 +104,7 @@ int voltage_ctrl_supported()
 #endif
 }
 
-const char* voltage_ctrl_mode()
+inline const char* voltage_ctrl_mode()
 {
 #ifdef SBS_RPI
 	return voltage_ctrl_modes[0];
@@ -112,7 +114,7 @@ const char* voltage_ctrl_mode()
 }
 
 
-int voltage_ctrl_init(int pin)
+inline int voltage_ctrl_init(int pin)
 {
 #ifdef SBS_RPI
 	return rpi_gpio_init(pin);
@@ -122,17 +124,17 @@ int voltage_ctrl_init(int pin)
 }
 
 
-int voltage_ctrl_set(int voltage)
+inline int voltage_ctrl_set(int voltage)
 {
 #ifdef SBS_RPI
-	return rpi_gpio_set(voltage);
+	return rpi_gpio_set(!voltage); // TODO remove inverse
 #else
 	return 0;
 #endif
 }
 
 
-void voltage_ctrl_close()
+inline void voltage_ctrl_close()
 {
 #ifdef SBS_RPI
 	rpi_gpio_close();

