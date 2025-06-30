@@ -8,6 +8,8 @@ This project requires userspace Linux headers (`linux-api-headers`, aka `linux-l
 
 `make debug`
 
+You may also enable RPI GPIO support for running voltage glitching exploits by setting `GPIO_RPI=1 make ...`. This flag requires the `libgpiod` library.
+
 ### Kernel module
 
 To build the experimental kernel module, run `make kmod` to build, `sudo make install` to install and `sudo make load` to load the module. Right now it only tries to find the SBS chip address on the EC according to the ACPI specification and dumps this info to dmesg. 
@@ -32,6 +34,7 @@ Commands:
   status         	Fetch device-specific status registers
   key KEY        	Elevate priviledges with a KEY, which should be specified as AAaaBBbb or 0xAAaaBBbb
   brute START END	Bruteforce keys in an optional range [START, END]
+  hack U_KEY FA_KEY	Execute password override exploit, which overwrites unseal and full access keys with new ones
   flash          	Dump contents of the flash memory
 
 Examples:

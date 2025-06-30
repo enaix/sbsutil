@@ -8,6 +8,9 @@ C=gcc
 # i2c is enabled by default
 ENABLE_I2C ?= 1
 
+# Voltage control: enable libgpiod control
+GPIO_RPI ?= 0
+
 CFLAGS = -Wall  #-Werror=return-type
 # Sanitizer disabled by default
 
@@ -17,6 +20,10 @@ CFLAGS_RELEASE = -O3 -DNDEBUG
 
 ifeq (${ENABLE_I2C}, 1)
 	CFLAGS += -DSBS_ENABLE_I2C
+endif
+
+ifeq (${GPIO_RPI}, 1)
+	CFLAGS += -DSBS_RPI
 endif
 
 
@@ -42,6 +49,10 @@ LINK =
 
 ifeq (${ENABLE_I2C}, 1)
 	LINK += -li2c
+endif
+
+ifeq (${GPIO_RPI}, 1)
+	LINK += -lgpiod
 endif
 
 .DEFAULT_GOAL := release

@@ -9,13 +9,14 @@
 #include "src/preflight.h"
 #include "src/bq40.h"
 #include "src/sbs.h"
+#include "src/voltage_ctrl.h"
 
 #include <signal.h>
 #include <time.h>
 
 
 uint32_t _bruteforce_key;
-int _bruteforce_fd;
+int _sig_fd;
 
 
 void device_unlock_priviledges(int fd, struct args* config, const char* key)
@@ -98,7 +99,7 @@ void bruteforce_graceful_shutdown(int fd)
 
 void bruteforce_sigterm(int signo)
 {
-	bruteforce_graceful_shutdown(_bruteforce_fd);
+	bruteforce_graceful_shutdown(_sig_fd);
 }
 
 
@@ -159,7 +160,7 @@ void device_bruteforce(int fd, struct args* config, const char* key_start, const
 	time_last = time_spec.tv_sec;
 	
 	config->verbose = 0;
-	_bruteforce_fd = fd;
+	_sig_fd = fd;
 
 	uint64_t keys_total = (res_r - res_s);
 	uint64_t perc_last = UINT64_MAX;
@@ -293,9 +294,226 @@ void device_dump_flash(int fd, struct args* config)
 				printf("device_dump_flash() : failed to read flash\n");
 				quit(fd, 1);
 			}
+			break;
 		}
 		default:
 			quit(fd, 1);
+	}
+}
+
+
+
+void device_hack_manual(int fd, struct args* config, uint32_t res_u, uint32_t res_fa)
+{
+	printf("While the exploit is executed, cut the power to the chip. If timing is correct, the chip should apply new keys. Old passwords will be lost.\n");
+	printf("Continue? [Y/n]: ");
+	fflush(stdout);
+
+	char buf[8];
+	ssize_t res = read(0, buf, 8);
+	if (res < 0 || !(res == 0 || buf[0] == 'y' || buf[0] == 'Y' || buf[0] == '\n'))
+	{
+		printf("Aborting...\n");
+		quit(fd, 1);
+	}
+
+	for (int i = 3; i >= 1; i--)
+	{
+		printf("%d... ", i);
+		fflush(stdout);
+		sleep(1);
+	}
+	printf("Executing!\n");
+	fflush(stdout);
+	int first_iter = 1;
+
+	while(1)
+	{
+		switch(config->chip)
+		{
+			case BQ40:
+				bq40_write_security_keys(fd, res_u, res_fa, config);
+				break;
+			default:
+				quit(fd, 1);
+		}
+		if (first_iter)
+		{
+			printf("\n    !! CUT THE POWER !! \n\n");
+			first_iter = 0;
+		}
+	}
+}
+
+
+void device_hack_sigterm(int signo)
+{
+	voltage_ctrl_close();
+	printf("Aborting...\n");
+	quit(_sig_fd, 1);
+}
+
+
+void device_hack_auto(int fd, struct args* config, uint32_t res_u, uint32_t res_fa)
+{
+	printf("While the exploit is executed, the chip voltage will be cut with different timings. If succeeded, the chip should apply new keys. Old passwords will be lost.\n");
+
+	// Exploit init
+	// ============
+	srand(time(NULL));
+	if (signal(SIGINT, device_hack_sigterm) == SIG_ERR)
+		printf("device_bruteforce() : cannot create sigint handler\n");
+
+	printf("Initializing voltage control...\n");
+	printf("Please specify the GPIO pin which controls the chip voltage: ");
+	fflush(stdout);
+	char buf[8];
+	if (read(0, buf, 8) <= 0)
+	{
+		printf("Aborting...\n");
+		quit(fd, 1);
+	}
+	int pin = atoi(buf);
+	if (!voltage_ctrl_init(pin))
+	{
+		printf("Could not init voltage control with GPIO pin %d\n", pin);
+		quit(fd, 1);
+	}
+	printf("Voltage control initialized\n");
+
+	
+
+	printf("Exploit init complete\n");
+	static int exploit_iter = 10000;
+	printf("Running each mode at %d iterations...\n", exploit_iter);
+	fflush(stdout);
+
+	int shutoff_delay_us = 0, reset_delay_us = 1000*1000, poweron_delay_us = 1000*500;
+
+	for (int mode = 1; mode < 2; mode++)
+	{
+		int errors_last[] = {0, 0, 0, 0, 0};
+		static int errors_n = sizeof(errors_last) / sizeof(int);
+		int errors_count = 0;
+		for (int i = 0; i < exploit_iter; i++)
+		{
+			// Get a random interval with voltage: ***___***
+			// We need to move this logic HERE to avoid any delay
+			int start = rand() % (2000 + 1);
+			int end = rand() % (3000 + 1);
+			int tail = rand() % (10000 + 1);
+			
+			
+			switch(config->chip)
+			{
+				case BQ40:
+					// Calculate sliding window
+					errors_count -= errors_last[errors_n - 1];
+					memmove(errors_last + 1, errors_last, errors_n - 1);
+					
+					if (bq40_write_security_keys(fd, res_u, res_fa, config) != 0)
+					{
+						errors_last[0] = 1;
+						errors_count += 1;
+					} else {
+						printf("    OK\n");
+						errors_last[0] = 0;
+					}
+					
+					break;
+				default:
+					quit(fd, 1);
+			}
+
+			// Voltage glitching
+			
+			switch(mode)
+			{
+				case 0: // Plain shutoff
+				{
+					usleep(shutoff_delay_us);
+					voltage_ctrl_set(0);
+					usleep(1000); // Discharge
+					voltage_ctrl_set(1);
+					usleep(poweron_delay_us); // Let the chip power on before sending more commands
+
+					// Update variables
+					if (errors_count > errors_n / 2 + 1) // threshold
+						poweron_delay_us += 500;
+
+					if (i % 1000 == 0)
+					{
+						shutoff_delay_us += 100;
+					}
+					break;
+				}
+				case 1: // Random spikes
+				{
+					usleep(start);
+					voltage_ctrl_set(0);
+					usleep(end);
+					voltage_ctrl_set(1);
+					usleep(tail);
+
+					// Make a full reset
+					voltage_ctrl_set(0);
+					usleep(reset_delay_us); // full reset
+					voltage_ctrl_set(1);
+					usleep(poweron_delay_us); // wake up
+
+					break;
+				}
+			}
+		}
+		printf("  SWITCHING TO THE NEXT EXPLOIT MODE\n");
+	}
+}
+
+
+
+void device_hack_keys(int fd, struct args* config, const char* unseal_key, const char* fa_key)
+{
+	if (config->chip == AUTO)
+	{
+		printf("AUTO chip model fetch is not supported yet. Please specify the CHIP argument\n");
+		quit(fd, 1);
+	}
+
+	size_t len_u = strlen(unseal_key), len_fa = strlen(fa_key);
+	uint32_t res_u, res_fa;
+
+	if ((len_u == 8 || len_u == 10) && (len_fa == 8 || len_fa == 10))
+	{
+		// AAaaBBbb
+		res_u = strtol(unseal_key, NULL, 16);
+		res_fa = strtol(fa_key, NULL, 16);
+	} else {
+		printf("Wrong key format. U_KEY and FA_KEY should be specified as AAaaBBbb or 0xAAaaBBbb\n");
+		quit(fd, 1);
+	}
+
+	switch(config->chip)
+	{
+		case BQ40:
+			if (!bq40_check_keys_format(res_u, res_fa, 1))
+				quit(fd, 1);
+			break;
+		default:
+			quit(fd, 1);
+	}
+
+	printf("Initializing password override hack...\n");
+	printf("This exploit attempts to confuse the chip by repeatedly sending new security keys in order to override the unsealed mode check.\n");
+
+	if (!voltage_ctrl_supported())
+	{
+		printf("  Exploit mode : MANUAL\n");
+		printf("  As you have to power off the chip by hand, the result is random. Don't expect much.\n");
+		device_hack_manual(fd, config, res_u, res_fa);
+	} else {
+		printf("  Exploit mode      : AUTO\n");
+		printf("  Voltage ctrl mode : %s\n", voltage_ctrl_mode());
+		device_hack_auto(fd, config, res_u, res_fa);
 	}
 }
 

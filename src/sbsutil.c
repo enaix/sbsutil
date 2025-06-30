@@ -39,6 +39,7 @@ void print_help()
 			"  status         \tFetch device-specific status registers\n"
 			"  key KEY        \tElevate priviledges with a KEY, which should be specified as AAaaBBbb or 0xAAaaBBbb\n"
 			"  brute START END\tBruteforce keys in an optional range [START, END]\n"
+			"  hack U_KEY FA_KEY\tExecute password override exploit, which overwrites unseal and full access keys with new ones\n"
 			"  flash          \tDump contents of the flash memory\n\n"
 			"Examples:\n"
 			"  sbsutil preflight    \tRun preflight checks without executing ManufacturerAccess commands. Requires loaded sbsctl kernel module to perform ACPI calls.\n"
@@ -68,6 +69,16 @@ int command_exec(int fd, const char* cmd, const char* cmd_arg1, const char* cmd_
 	else if (strcmp(cmd, "flash") == 0)
 	{
 		device_dump_flash(fd, config);
+	}
+	else if (strcmp(cmd, "hack") == 0)
+	{
+		if (!cmd_arg1 || !cmd_arg2)
+		{
+			printf("Please specify new unseal key U_KEY and full access key FA_KEY.\n");
+			print_help();
+			return 1;
+		}
+		device_hack_keys(fd, config, cmd_arg1, cmd_arg2);
 	}
 	else
 	{

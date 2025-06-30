@@ -421,7 +421,7 @@ int bq40_dump_flash(int fd, struct args* config)
 }
 
 
-int bq40_check_key_format(uint32_t key, int log_reason)
+int bq40_check_key_format(uint32_t key, int log_err)
 {
 	__u8* key8 = (__u8*)(&key);
 	uint16_t key_l = *((uint16_t*)(key8) + 1);
@@ -430,7 +430,7 @@ int bq40_check_key_format(uint32_t key, int log_reason)
 	{
 		if (key_l == bq40_mac[i])
 		{
-			if (log_reason)
+			if (log_err)
 				printf("bq40_check_key_format() : first word of the key %.4x collides with the MAC command\n", key_l);
 			return 0;
 		}
@@ -440,12 +440,28 @@ int bq40_check_key_format(uint32_t key, int log_reason)
 	{
 		if (key_l >= bq40_mac_ranges[i].start && key_l <= bq40_mac_ranges[i].end)
 		{
-			if (log_reason)
+			if (log_err)
 				printf("bq40_check_key_format() : first word of the key %.4x cannot be in range [%.4x, %.4x] : MAC collision\n", key_l, bq40_mac_ranges[i].start, bq40_mac_ranges[i].end);
 			return 0;
 		}
 	}
 	return 1;
+}
+
+int bq40_check_keys_format(uint32_t unseal_key, uint32_t fa_key, int log_err)
+{
+	__u8* ukey8 = (__u8*)(&unseal_key);
+	__u8* fakey8 = (__u8*)(&fa_key);
+	uint16_t ukey_l = *((uint16_t*)(ukey8) + 1);
+	uint16_t fakey_l = *((uint16_t*)(fakey8) + 1);
+	
+	if (ukey_l == fakey_l)
+	{
+		if (log_err)
+			printf("bq40_check_keys_format() : unseal and full access key should not start from the same word %.4x\n", ukey_l);
+		return 1;
+	}
+	return bq40_check_key_format(unseal_key, log_err) && bq40_check_key_format(fa_key, log_err);
 }
 
 
