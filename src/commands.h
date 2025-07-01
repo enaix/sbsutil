@@ -415,7 +415,7 @@ void device_hack_auto(int fd, struct args* config, uint32_t res_u, uint32_t res_
 	
 	// EXPLOIT PARAMS
 	static size_t exploit_iter = 1000000;
-	static size_t exploit_step = 100;
+	static size_t exploit_step = 50;
 	printf("Running each mode at %ld iterations with %ld steps per try (%ld unique tests total)...\n", exploit_iter, exploit_step, exploit_iter / exploit_step);
 	fflush(stdout);
 
@@ -482,7 +482,11 @@ void device_hack_auto(int fd, struct args* config, uint32_t res_u, uint32_t res_
 				if (interval_delay.tv_nsec != 0)
 					nanosleep(&interval_delay, NULL);
 				voltage_ctrl_set(1);
-
+				usleep(1000*5); // Continue execution for a bit more
+				// Discharge
+				voltage_ctrl_set(0);
+				usleep(reset_delay_us);
+				voltage_ctrl_set(1);
 				usleep(poweron_delay_us);
 
 				if ((i + 1) % exploit_step == 0) // We need to increase it 
