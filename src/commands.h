@@ -474,6 +474,7 @@ void device_hack_auto(int fd, struct args* config, uint32_t res_u, uint32_t res_
 				}
 
 				printf("\r[%ld/%ld] (retry %ld/%ld) shutoff delay : %ld ns...", i, exploit_iter, (i + 1) % exploit_step, exploit_step, shutoff_delay.tv_nsec);
+				fflush(stdout);
 				break;
 			case 1: // Tiny spike
 				if (shutoff_delay.tv_nsec != 0)
@@ -505,7 +506,14 @@ void device_hack_auto(int fd, struct args* config, uint32_t res_u, uint32_t res_
 				}
 
 				printf("\r[%ld/%ld] (retry %ld/%ld) shutoff delay : %ld ns, interval delay : %ld ns (%.2d/%.2d)...", i, exploit_iter, (i + 1) % exploit_step, exploit_step, shutoff_delay.tv_nsec, interval_delay.tv_nsec, cur_step, interval_steps);
+				fflush(stdout);
 				break;
+		}
+
+		if ((i + 1) % (exploit_iter / 2) != 0)
+		{
+			// Check the following block only twice per execution
+			continue;
 		}
 
 		switch(config->chip)
@@ -532,7 +540,6 @@ void device_hack_auto(int fd, struct args* config, uint32_t res_u, uint32_t res_
 				quit(fd, 1);
 		}
 		
-		fflush(stdout);
 	}
 
 	voltage_ctrl_close();
